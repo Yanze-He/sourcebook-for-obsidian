@@ -3,7 +3,7 @@
   "name": "Sourcebook",
   "version": "0.2.1",
   "minAppVersion": "1.8.0",
-  "description": "Organize original Vault files, text and links into Books. Add live references to notes and hand off selected context to AI.",
+  "description": "Organize Vault files, text, links, and Picker captures into Books. Add native references to project notes and hand off selected context to AI.",
   "author": "Sourcebook contributors",
   "isDesktopOnly": true
 }

@@ -1,10 +1,10 @@
 import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import type SourcebookPlugin from './main';
 import {
-    Book, Entry, Resolved, Library, BOOKS_DIR, DATA_DIR, SNAPSHOTS_DIR, canPreviewImage, humanSize,
-    message, searchText, MAX_IMPORT_BYTES, safeName, Kind
+    Book, Entry, Resolved, Library, ROOT, canPreviewImage, humanSize,
+    message, searchText, MAX_IMPORT_BYTES, Kind
 } from './core';
-import { planPack, promptFor, attachmentPaths, handoffFileCount, handoffTextFileName, PackPlan, ProjectContext } from './pack';
+import { planPack, promptFor, attachmentPaths, handoffFileCount, handoffTextFileName, PackPlan } from './pack';
 import { FormModal, FilePicker, ConfirmModal, PickerPairingModal, label } from './ui';
 import { copyFiles, copyFilesWithText, copyText, fileClipboardPlatform } from './clipboard';
 import { Fragment, h, render } from './jsx';
@@ -44,7 +44,7 @@ function formatDuration(value: number): string {
 }
 
 function kindIcon(kind: Kind): IconName {
-    return kind === 'image' ? 'image' : kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : kind === 'conversation' ? 'message' : kind === 'post' || kind === 'note' ? 'file-text' : kind === 'text' ? 'text' : kind === 'link' ? 'link' : 'file';
+    return kind === 'image' ? 'image' : kind === 'video' ? 'video' : kind === 'audio' ? 'audio' : kind === 'conversation' ? 'message' : kind === 'post' ? 'file-text' : kind === 'note' ? 'book-open' : kind === 'text' ? 'text' : kind === 'link' ? 'link' : 'file';
 }
 
 function kindLabel(kind: Kind, lang: 'zh' | 'en'): string {
@@ -83,6 +83,31 @@ function EmptyState(props: { title: string; description: string; actions: EmptyS
     return <div className="sourcebook-empty"><div className="sourcebook-empty-icon"><SourcebookMark size={44}/></div><h2>{props.title}</h2><p>{props.description}</p>{props.actions.length ? <div className="sourcebook-empty-actions">{props.actions.map(action => <button className={`desktop-button${action.tone === 'picker' ? ' sourcebook-empty-picker' : action.tone === 'primary' ? ' is-primary' : ''}`} onClick={action.onAction} type="button"><Icon name={action.icon} size={17}/>{action.label}</button>)}</div> : null}</div>;
 }
 
+function VideoBadge(props: { duration?: number }): JSX.Element {
+    return <span className="source-media-badge source-media-kind"><Icon name="video" size={16}/><strong>{formatDuration(props.duration || NaN) || '—'}</strong></span>;
+}
+
+function AudioCardPlayer(props: { label: string; src: string; duration?: number; onDuration?: (value: number) => void }): JSX.Element {
+    const totalDuration = (audio: HTMLAudioElement): number | undefined => Number.isFinite(audio.duration) && audio.duration > 0 ? audio.duration : props.duration;
+    const sync = (audio: HTMLAudioElement): void => {
+        const player = audio.closest<HTMLElement>('.source-audio-player');
+        const time = player?.querySelector<HTMLElement>('[data-audio-time]');
+        const duration = totalDuration(audio);
+        if (duration) props.onDuration?.(duration);
+        if (time) time.textContent = `${formatDuration(audio.currentTime) || '0:00'} / ${formatDuration(duration || NaN) || '—'}`;
+        player?.classList.toggle('is-playing', !audio.paused && !audio.ended);
+    };
+    const toggle = (event: MouseEvent): void => {
+        event.stopPropagation();
+        const player = (event.currentTarget as HTMLElement).closest<HTMLElement>('.source-audio-player');
+        const audio = player?.querySelector('audio');
+        if (!audio) return;
+        if (audio.paused) void audio.play().then(() => sync(audio)).catch(() => undefined);
+        else { audio.pause(); sync(audio); }
+    };
+    return <div className="source-audio-player" onClick={(event: MouseEvent) => event.stopPropagation()}><audio aria-label={props.label} preload="metadata" src={props.src} onCanPlay={(event: Event) => sync(event.currentTarget as HTMLAudioElement)} onDurationChange={(event: Event) => sync(event.currentTarget as HTMLAudioElement)} onEnded={(event: Event) => sync(event.currentTarget as HTMLAudioElement)} onLoadedMetadata={(event: Event) => sync(event.currentTarget as HTMLAudioElement)} onPause={(event: Event) => sync(event.currentTarget as HTMLAudioElement)} onPlay={(event: Event) => sync(event.currentTarget as HTMLAudioElement)} onTimeUpdate={(event: Event) => sync(event.currentTarget as HTMLAudioElement)}/><button aria-label="Play audio" className="source-audio-play" onClick={toggle} type="button"><Icon className="source-audio-play-icon" name="play" size={15}/><Icon className="source-audio-pause-icon" name="pause" size={15}/></button><time data-audio-time="true">0:00 / {formatDuration(props.duration || NaN) || '—'}</time></div>;
+}
+
 export class SourcebookView extends ItemView {
     private library: Library = { books: [], warnings: [], legacyDetected: false };
     private book?: Book;
@@ -109,18 +134,19 @@ export class SourcebookView extends ItemView {
     private bookOptionsId = '';
     private bookSettingsOpen = false;
     private handoffOpen = false;
-    private handoffChoiceOpen = false;
     private handoffScopeExpanded = false;
-    private handoffSource: 'sources' | 'project' = 'sources';
     private handoffPrompt = '';
-    private handoffProject?: ProjectContext;
-    private handoffProjectItems: Resolved[] = [];
     private handoffBusy = false;
     private handoffStatus = '';
     private handoffError = '';
     private toast?: Toast;
     private toastTimer?: ReturnType<typeof setTimeout>;
     private focusDetailNote = false;
+    private detailNoteDrafts = new Map<string, string>();
+    private detailTextDrafts = new Map<string, string>();
+    private detailNoteSaveJobs = new Map<string, Promise<void>>();
+    private detailTextSaveJobs = new Map<string, Promise<void>>();
+    private mediaDurations = new Map<string, number>();
     private masonryColumns = 1;
     private resizeObserver?: ResizeObserver;
 
@@ -380,7 +406,7 @@ export class SourcebookView extends ItemView {
 
     private renderAddActions(): JSX.Element {
         const actions: Array<{ icon: IconName; label: string; title: string; run: () => void }> = [
-            { icon: 'folder-open', label: this.t('导入 Vault 文件', 'Import Vault file'), title: this.t('导入 Vault 文件', 'Import Vault file'), run: () => this.pickVault() },
+            { icon: 'folder-open', label: this.t('导入 Vault 文件', 'Import Vault file'), title: this.t('导入 Vault 文件', 'Import Vault file'), run: () => { void this.pickVault().catch(error => this.notify(message(error), 'error')); } },
             { icon: 'upload', label: this.t('导入本地文件', 'Import local files'), title: this.t('导入本地文件', 'Import local files'), run: () => this.importFiles() },
             { icon: 'file-plus', label: this.t('添加文字', 'Add text'), title: this.t('添加文字', 'Add text'), run: () => this.addText() },
             { icon: 'file-text', label: this.t('添加笔记', 'Add Note'), title: this.t('新建并打开 Vault 笔记', 'Create and open a Vault note'), run: () => void this.addVaultNote() }
@@ -471,41 +497,42 @@ export class SourcebookView extends ItemView {
         ].filter(Boolean).join(' ');
         const onCardClick = () => {
             if (this.selectionMode) this.toggleSelected(item);
-            else { this.detailId = item.entry.id; this.renderApp(); }
+            else this.openDetail(item);
         };
         const resourceUrl = item.filePath ? this.plugin.io.resource(item.filePath) : item.url;
+        const duration = this.mediaDurations.get(item.entry.id) || item.durationSeconds;
         const aiProvider = item.kind === 'conversation' ? aiProviderBadge(item.url) : '';
         const artwork = item.filePath && canPreviewImage(item.filePath)
-            ? <div className="source-masonry-media"><button aria-label={this.t('查看详情', 'View details')} className="source-masonry-media-button" onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.toggleSelected(item); else { this.detailId = item.entry.id; this.renderApp(); } }} type="button"><img alt={item.title} className="media-thumb" src={this.plugin.io.resource(item.filePath)}/></button></div>
+            ? <div className="source-masonry-media"><button aria-label={this.t('查看详情', 'View details')} className="source-masonry-media-button" onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.toggleSelected(item); else this.openDetail(item); }} type="button"><img alt={item.title} className="media-thumb" src={this.plugin.io.resource(item.filePath)}/></button></div>
             : item.filePath && item.kind === 'video'
-                ? <div className="source-masonry-media"><button aria-label={this.t('查看详情', 'View details')} className="source-masonry-media-button" onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.toggleSelected(item); else { this.detailId = item.entry.id; this.renderApp(); } }} type="button"><video aria-label={item.title} className="media-thumb video-thumb" muted playsInline preload="metadata" src={this.plugin.io.resource(item.filePath)} onLoadedMetadata={(event: Event) => { const video = event.currentTarget as HTMLVideoElement; const badge = video.closest('.source-masonry-media')?.querySelector<HTMLElement>('.source-media-badge span'); const duration = formatDuration(video.duration); if (badge && duration) badge.textContent = duration; if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = Math.min(.1, video.duration * .05); }}/></button><span className="source-media-badge"><Icon name="video" size={13}/><span>{this.t('视频', 'Video')}</span></span></div>
-            : item.thumbnailUrl
-                ? <div className="source-masonry-media"><button aria-label={this.t('查看详情', 'View details')} className="source-masonry-media-button" onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.toggleSelected(item); else { this.detailId = item.entry.id; this.renderApp(); } }} type="button"><img alt={item.title} className="media-thumb" src={item.thumbnailUrl}/></button></div>
+                ? <div className="source-masonry-media"><button aria-label={this.t('查看详情', 'View details')} className="source-masonry-media-button" onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.toggleSelected(item); else this.openDetail(item); }} type="button"><video aria-label={item.title} className="media-thumb video-thumb" muted playsInline preload="metadata" src={this.plugin.io.resource(item.filePath)} onLoadedMetadata={(event: Event) => { const video = event.currentTarget as HTMLVideoElement; this.rememberDuration(item.entry.id, video.duration); const badge = video.closest('.source-masonry-media')?.querySelector<HTMLElement>('.source-media-badge strong'); const current = formatDuration(video.duration); if (badge && current) badge.textContent = current; if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = Math.min(.1, video.duration * .05); }}/></button><VideoBadge duration={duration}/></div>
+            : item.thumbnailUrl && item.kind !== 'audio'
+                ? <div className="source-masonry-media"><button aria-label={this.t('查看详情', 'View details')} className="source-masonry-media-button" onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.toggleSelected(item); else this.openDetail(item); }} type="button"><img alt={item.title} className="media-thumb" src={item.thumbnailUrl}/></button>{item.kind === 'video' ? <VideoBadge duration={duration}/> : null}</div>
             : item.kind === 'audio' && resourceUrl
-                ? <div className="source-audio-preview"><div className="source-card-kind"><Icon name="audio" size={16}/><strong>{this.t('音频', 'Audio')}</strong></div><audio aria-label={item.title} controls onClick={(event: MouseEvent) => event.stopPropagation()} src={resourceUrl}/></div>
+                ? <div className="source-audio-preview"><div className="source-card-kind"><Icon name="audio" size={16}/><strong>{this.t('音频', 'Audio')}</strong></div><AudioCardPlayer duration={duration} label={item.title} onDuration={value => this.rememberDuration(item.entry.id, value)} src={resourceUrl}/></div>
             : item.kind === 'post' || item.kind === 'link'
                 ? <div className="source-link-preview"><div className="source-card-kind"><Icon name="link" size={16}/><strong>{kindLabel(item.kind, this.plugin.settings.language)}</strong></div><p>{item.body.slice(0, 180) || item.url}</p></div>
             : item.kind === 'text' || item.kind === 'note' || Boolean(item.body)
-                ? <div className="source-text-preview"><div className="source-card-kind"><Icon name="text" size={16}/><strong>{kindLabel(item.kind, this.plugin.settings.language)}</strong></div><p>{item.body.slice(0, 150)}</p></div>
+                ? <div className="source-text-preview"><div className="source-card-kind"><Icon name={kindIcon(item.kind)} size={16}/><strong>{kindLabel(item.kind, this.plugin.settings.language)}</strong></div><p>{item.body.slice(0, 150)}</p></div>
                 : <div className="source-file-preview"><div className="source-card-kind"><Icon name={kindIcon(item.kind)} size={16}/><strong>{item.filePath?.split('.').pop()?.toUpperCase() || kindLabel(item.kind, this.plugin.settings.language)}</strong>{item.filePath ? <span>{humanSize(item.fileSize)}</span> : null}</div></div>;
         return <article className={cls} data-source-id={item.entry.id} onClick={onCardClick}>
             <div className="source-card-hover-actions">
                 {openableFile ? <button aria-label={this.t('打开原文件', 'Open original file')} className="source-card-quick-action" data-tooltip={this.t('打开原文件', 'Open original file')} onClick={(event: MouseEvent) => { event.stopPropagation(); void this.openOriginal(item.filePath as string); }} type="button"><Icon name="external-link" size={15}/></button> : null}
                 <button aria-label={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} aria-pressed={favorite} className={`source-card-favorite${favorite ? ' active' : ''}`} data-tooltip={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} onClick={(event: MouseEvent) => { event.stopPropagation(); void this.toggleFavorite(item); }} type="button"><Icon filled={favorite} name="star" size={13}/></button>
-                <button aria-label={this.selectionMode ? this.t('查看详情', 'View details') : this.t('复制到剪贴板', 'Copy to clipboard')} className="source-select-button" data-tooltip={this.selectionMode ? this.t('查看详情', 'View details') : this.t('复制到剪贴板', 'Copy to clipboard')} onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) { this.detailId = item.entry.id; this.renderApp(); } else void this.copyCard(item); }} type="button">{this.selectionMode ? <><Icon name="eye" size={14}/><span className="source-select-label">{this.t('查看', 'View')}</span></> : <><Icon name="copy" size={14}/><span className="source-select-label">{this.t('复制', 'Copy')}</span></>}</button>
+                <button aria-label={this.selectionMode ? this.t('查看详情', 'View details') : this.t('复制到剪贴板', 'Copy to clipboard')} className="source-select-button" data-tooltip={this.selectionMode ? this.t('查看详情', 'View details') : this.t('复制到剪贴板', 'Copy to clipboard')} onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.openDetail(item); else void this.copyCard(item); }} type="button">{this.selectionMode ? <><Icon name="eye" size={14}/><span className="source-select-label">{this.t('查看', 'View')}</span></> : <><Icon name="copy" size={14}/><span className="source-select-label">{this.t('复制', 'Copy')}</span></>}</button>
             </div>
             <button aria-label={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} aria-pressed={favorite} className={`source-card-favorite-pinned${favorite ? ' active' : ''}`} data-tooltip={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} hidden={!favorite} onClick={(event: MouseEvent) => { event.stopPropagation(); void this.toggleFavorite(item); }} type="button"><Icon filled name="star" size={13}/></button>
             {artwork}
             <div className="source-masonry-body">
                 <h3>{item.title}</h3>
                 <div className="source-card-meta"><span className={`data-status-badge ${item.url ? 'is-link' : 'is-local'}${aiProvider ? ' is-ai-provider' : ''}`}>{aiProvider ? <span aria-hidden="true" className="source-ai-provider">{aiProvider}</span> : <><Icon name={item.url ? 'link' : 'hard-drive'} size={13}/>{item.url && item.faviconUrl ? <span aria-hidden="true" className="source-favicon" style={{ backgroundImage: `url("${item.faviconUrl}")` }}/> : null}</>}</span>{item.url ? <button aria-label={this.t(`访问 ${source}`, `Visit ${source}`)} className="source-card-source-link" onClick={(event: MouseEvent) => { event.stopPropagation(); window.open(item.url, '_blank', 'noopener,noreferrer'); }} type="button">{source}</button> : <span>{source}</span>}{date ? <time>{date}</time> : null}</div>
-                <div className="source-card-context-row"><button aria-label={this.t(`编辑 ${item.title} 的备注`, `Edit context for ${item.title}`)} className={`source-card-note${item.entry.note ? ' has-note' : ''}`} onClick={(event: MouseEvent) => { event.stopPropagation(); this.detailId = item.entry.id; this.focusDetailNote = true; this.renderApp(); }} type="button"><Icon name="message" size={13}/><span>{item.entry.note || this.t('添加备注…', 'Add context…')}</span></button><button aria-label={this.t(`选择 ${item.title}`, `Select ${item.title}`)} aria-pressed={selected} className={`source-card-select${selected ? ' is-selected' : ''}`} onClick={(event: MouseEvent) => { event.stopPropagation(); this.toggleSelected(item); }} type="button"><Icon name="check" size={15}/></button></div>
+                <div className="source-card-context-row"><button aria-label={this.t(`编辑 ${item.title} 的备注`, `Edit context for ${item.title}`)} className={`source-card-note${item.entry.note ? ' has-note' : ''}`} onClick={(event: MouseEvent) => { event.stopPropagation(); this.openDetail(item, true); }} type="button"><Icon name="message" size={13}/><span>{item.entry.note || this.t('添加备注…', 'Add context…')}</span></button><button aria-label={this.t(`选择 ${item.title}`, `Select ${item.title}`)} aria-pressed={selected} className={`source-card-select${selected ? ' is-selected' : ''}`} onClick={(event: MouseEvent) => { event.stopPropagation(); this.toggleSelected(item); }} type="button"><Icon name="check" size={15}/></button></div>
             </div>
         </article>;
     }
 
     private renderBatchActions(visible: Resolved[]): JSX.Element {
-        if (!this.selectionMode) return <div className="selection-entry-actions"><button aria-label={this.t('批量操作', 'Batch actions')} className="batch-actions-fab batch-actions-entry is-collapsed" onClick={() => this.startBatchSelection()} type="button"><Icon name="list" size={16}/></button><div className="handoff-entry-wrap"><button aria-expanded={this.handoffChoiceOpen} aria-haspopup="menu" className="batch-actions-fab is-collapsed handoff-entry" onClick={() => { this.handoffChoiceOpen = !this.handoffChoiceOpen; this.renderApp(); }} type="button"><Icon name="send" size={16}/><span className="batch-actions-label">{this.t('发送给 AI', 'Send to AI')}</span></button>{this.handoffChoiceOpen ? <><div aria-hidden="true" className="popover-dismiss-layer batch-popover-dismiss" onClick={() => { this.handoffChoiceOpen = false; this.renderApp(); }}/><div className="handoff-entry-popover" role="menu"><button onClick={() => this.startHandoffSelection()} role="menuitem" type="button"><Icon name="list" size={17}/><span>{this.t('选择素材发送', 'Send selected sources')}</span></button><button onClick={() => this.startProjectHandoff()} role="menuitem" type="button"><Icon name="file-text" size={17}/><span>{this.t('发送笔记', 'Send a note')}</span></button></div></> : null}</div></div>;
+        if (!this.selectionMode) return <div className="selection-entry-actions"><button aria-label={this.t('批量操作', 'Batch actions')} className="batch-actions-fab batch-actions-entry is-collapsed" onClick={() => this.startBatchSelection()} type="button"><Icon name="list" size={16}/></button><button className="batch-actions-fab is-collapsed handoff-entry" onClick={() => this.startHandoffSelection()} type="button"><Icon name="send" size={16}/><span className="batch-actions-label">{this.t('发送给 AI', 'Send to AI')}</span></button></div>;
         const summary = this.renderSelectionSummary(visible);
         if (this.selectionIntent === 'handoff') return <div className="batch-actions-fab handoff-selection-bar is-expanded">{summary}<button className="is-primary batch-send-ai" disabled={!this.selected.size} onClick={() => this.openHandoffFromSources()} type="button"><Icon name="arrow-left-right" size={16}/>{this.t('继续', 'Continue')}</button><button aria-label={this.t('取消发送素材', 'Cancel sending sources')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
         if (!this.selected.size) return <div className="batch-actions-fab">{summary}<button aria-label={this.t('关闭批量操作', 'Close batch actions')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
@@ -514,23 +541,27 @@ export class SourcebookView extends ItemView {
 
     private renderDetail(item: Resolved): JSX.Element {
         const favorite = this.isFavorite(item);
+        const duration = this.mediaDurations.get(item.entry.id) || item.durationSeconds;
         const rows: DetailRow[] = [
             ...(item.url ? [{ label: this.t('链接', 'Link'), value: item.url, reveal: item.url }] : []),
             { label: this.t('来源', 'Source'), value: this.sourceLabel(item) },
             { label: this.t('修改时间', 'Modified'), value: formatDateTime(item.modifiedAt) },
             { label: this.t('格式', 'Format'), value: item.kind },
+            ...(['video', 'audio'].includes(item.kind) ? [{ label: this.t('时长', 'Duration'), value: formatDuration(duration || NaN) || '—' }] : []),
             { label: this.t('大小', 'Size'), value: item.filePath ? humanSize(item.fileSize) : '—' },
             { label: this.t('位置', 'Path'), value: item.filePath || item.bookPath }
         ];
-        return <div className="masonry-detail-backdrop" role="presentation" onClick={(event: MouseEvent) => { if (event.target === event.currentTarget) { this.detailId = ''; this.renderApp(); } }}>
+        const noteDraft = this.detailNoteDrafts.get(item.entry.id) ?? item.entry.note;
+        const textDraft = this.detailTextDrafts.get(item.entry.id) ?? item.body;
+        return <div className="masonry-detail-backdrop" role="presentation" onClick={(event: MouseEvent) => { if (event.target === event.currentTarget) this.closeDetail(item); }}>
             <aside aria-modal="true" className="masonry-detail-modal" role="dialog">
-                <header className="detail-resource-header"><h2>{item.title}</h2><div className="detail-resource-actions"><button aria-label={this.t('编辑标题', 'Edit title')} className="detail-title-action" disabled={item.entry.type === 'file'} onClick={() => void this.editTitle(item)} type="button"><Icon name="pencil" size={20}/></button><button aria-label={this.t('关闭详情', 'Close detail')} className="detail-title-action detail-close-action" onClick={() => { this.detailId = ''; this.renderApp(); }} type="button"><Icon name="x" size={18}/></button></div></header>
+                <header className="detail-resource-header"><h2>{item.title}</h2><div className="detail-resource-actions"><button aria-label={this.t('编辑标题', 'Edit title')} className="detail-title-action" onClick={() => void this.editTitle(item)} type="button"><Icon name="pencil" size={20}/></button><button aria-label={this.t('关闭详情', 'Close detail')} className="detail-title-action detail-close-action" onClick={() => this.closeDetail(item)} type="button"><Icon name="x" size={18}/></button></div></header>
                 <div className="inspector-body">
-                    {item.filePath && canPreviewImage(item.filePath) ? <figure className="detail-media-preview"><img alt={item.title} src={this.plugin.io.resource(item.filePath)}/></figure> : item.filePath && item.kind === 'video' ? <figure className="detail-media-preview"><video aria-label={item.title} muted playsInline preload="metadata" src={this.plugin.io.resource(item.filePath)} onLoadedMetadata={(event: Event) => { const video = event.currentTarget as HTMLVideoElement; if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = Math.min(.1, video.duration * .05); }}/></figure> : item.kind === 'audio' && (item.filePath || item.url) ? <figure className="detail-media-preview detail-audio-preview"><audio aria-label={item.title} controls src={item.filePath ? this.plugin.io.resource(item.filePath) : item.url}/></figure> : item.thumbnailUrl ? <figure className="detail-media-preview"><img alt={item.title} src={item.thumbnailUrl}/></figure> : item.entry.type === 'text' ? <section className="detail-text-editor"><div className="detail-text-heading"><h3>{this.t('内容', 'Content')}</h3><span>{this.t('最多 20,000 字', '20,000 characters maximum')}</span></div><textarea aria-label={this.t('文本内容', 'Text content')} defaultValue={item.body} maxLength={20_000} onBlur={(event: FocusEvent) => void this.saveDetailText(item, event)}/></section> : item.kind === 'text' && item.body ? <section className="detail-text-editor"><div className="detail-text-heading"><h3>{this.t('内容', 'Content')}</h3></div><textarea aria-label={this.t('文本内容', 'Text content')} readOnly value={item.body}/></section> : item.body ? <pre className="detail-text-preview">{item.body}</pre> : item.url ? <div className="detail-link-preview"><Icon name="link" size={28}/><a href={item.url} rel="noopener noreferrer" target="_blank">{item.url}</a></div> : <div className="detail-file-preview"><Icon name={kindIcon(item.kind)} size={42}/><strong>{item.filePath || this.t('原文件缺失', 'Original file missing')}</strong></div>}
-                    <section className="description-editor"><div className="description-editor-heading"><span>{this.t('备注', 'Context')}</span></div><textarea aria-label={this.t('本册备注', 'Book context')} autoFocus={this.focusDetailNote} defaultValue={item.entry.note} placeholder={this.t('可写素材的来源和用途，便于管理、检索并在发送给 AI 时作为上下文。', 'Describe the source and intended use to support management, search, and AI context.')} onBlur={(event: FocusEvent) => void this.saveDetailNote(item, event)} /></section>
+                    {item.filePath && canPreviewImage(item.filePath) ? <figure className="detail-media-preview"><img alt={item.title} src={this.plugin.io.resource(item.filePath)}/></figure> : item.filePath && item.kind === 'video' ? <figure className="detail-media-preview"><video aria-label={item.title} muted playsInline preload="metadata" src={this.plugin.io.resource(item.filePath)} onLoadedMetadata={(event: Event) => { const video = event.currentTarget as HTMLVideoElement; this.rememberDuration(item.entry.id, video.duration); if (Number.isFinite(video.duration) && video.duration > 0) video.currentTime = Math.min(.1, video.duration * .05); }}/></figure> : item.kind === 'audio' && (item.filePath || item.url) ? <figure className="detail-media-preview detail-audio-preview"><audio aria-label={item.title} controls src={item.filePath ? this.plugin.io.resource(item.filePath) : item.url} onCanPlay={(event: Event) => this.rememberDuration(item.entry.id, (event.currentTarget as HTMLAudioElement).duration)} onDurationChange={(event: Event) => this.rememberDuration(item.entry.id, (event.currentTarget as HTMLAudioElement).duration)}/></figure> : item.thumbnailUrl ? <figure className="detail-media-preview"><img alt={item.title} src={item.thumbnailUrl}/></figure> : item.entry.type === 'text' ? <section className="detail-text-editor"><div className="detail-text-heading"><h3>{this.t('内容', 'Content')}</h3><span>{this.t('最多 20,000 字', '20,000 characters maximum')}</span></div><textarea aria-label={this.t('文本内容', 'Text content')} maxLength={20_000} onBlur={(event: FocusEvent) => void this.saveDetailText(item, (event.currentTarget as HTMLTextAreaElement).value)} onInput={(event: Event) => { this.detailTextDrafts.set(item.entry.id, (event.currentTarget as HTMLTextAreaElement).value); }} value={textDraft}/></section> : item.kind === 'text' && item.body ? <section className="detail-text-editor"><div className="detail-text-heading"><h3>{this.t('内容', 'Content')}</h3></div><textarea aria-label={this.t('文本内容', 'Text content')} readOnly value={item.body}/></section> : item.body ? <pre className="detail-text-preview">{item.body}</pre> : item.url ? <div className="detail-link-preview"><Icon name="link" size={28}/><a href={item.url} rel="noopener noreferrer" target="_blank">{item.url}</a></div> : <div className="detail-file-preview"><Icon name={kindIcon(item.kind)} size={42}/><strong>{item.filePath || this.t('原文件缺失', 'Original file missing')}</strong></div>}
+                    <section className="description-editor"><div className="description-editor-heading"><span>{this.t('备注', 'Context')}</span></div><textarea aria-label={this.t('本册备注', 'Book context')} autoFocus={this.focusDetailNote} placeholder={this.t('可写素材的来源和用途，便于管理、检索并在发送给 AI 时作为上下文。', 'Describe the source and intended use to support management, search, and AI context.')} value={noteDraft} onBlur={() => void this.saveDetailNote(item)} onInput={(event: Event) => { this.detailNoteDrafts.set(item.entry.id, (event.currentTarget as HTMLTextAreaElement).value); }} /></section>
                     <section className="inspector-section"><h3>{this.t('信息', 'Info')}</h3><dl className="field-grid">{rows.map(row => <><dt>{row.label}</dt><dd><span>{row.value}</span>{row.reveal ? <button aria-label={row.label === this.t('链接', 'Link') ? this.t('访问链接', 'Open link') : this.t('在本地文件夹中显示', 'Reveal in folder')} className="detail-reveal-path" onClick={() => row.label === this.t('链接', 'Link') ? window.open(row.reveal as string, '_blank', 'noopener,noreferrer') : this.revealOriginal(row.reveal as string)} type="button"><Icon name="external-link" size={13}/></button> : null}</dd></>)}</dl></section>
                 </div>
-                <footer className="inspector-footer"><div className="inspector-footer-actions"><div className="inspector-footer-utility"><button className="detail-delete-button" onClick={() => this.confirmDeleteOne(item)} type="button"><Icon name="trash" size={18}/>{this.t('删除', 'Delete')}</button><button className="desktop-button" onClick={() => this.removeOne(item)} type="button"><Icon name="arrow-left-right" size={19}/>{this.t('移出', 'Remove')}</button>{item.filePath ? <button className="desktop-button" onClick={() => void this.copyOne(item)} type="button"><Icon name="copy" size={18}/>{this.t('复制文件', 'Copy files')}</button> : item.url ? <button className="desktop-button" onClick={() => void this.copyCard(item)} type="button"><Icon name="copy" size={18}/>{this.t('复制链接', 'Copy link')}</button> : null}</div><div className="inspector-footer-selection-actions">{item.filePath ? <button className="desktop-button" onClick={() => void this.openOriginal(item.filePath as string)} type="button"><Icon name="external-link" size={18}/>{this.t('打开', 'Open')}</button> : null}<button aria-label={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} aria-pressed={favorite} className={`detail-footer-favorite${favorite ? ' active' : ''}`} onClick={() => void this.toggleFavorite(item)} type="button"><Icon filled={favorite} name="star" size={21}/></button></div></div></footer>
+                <footer className="inspector-footer"><div className="inspector-footer-actions"><div className="inspector-footer-utility"><button className="detail-delete-button" onClick={() => this.confirmDeleteOne(item)} type="button"><Icon name="trash" size={18}/>{this.t('删除', 'Delete')}</button><button className="desktop-button" onClick={() => this.removeOne(item)} type="button"><Icon name="arrow-left-right" size={19}/>{this.t('移出', 'Remove')}</button>{(item.kind === 'link' || item.kind === 'post') && item.url ? <button className="desktop-button" onClick={() => void this.copyCard(item)} type="button"><Icon name="copy" size={18}/>{this.t('复制链接', 'Copy link')}</button> : item.filePath ? <button className="desktop-button" onClick={() => void this.copyOne(item)} type="button"><Icon name="copy" size={18}/>{this.t('复制文件', 'Copy files')}</button> : item.url ? <button className="desktop-button" onClick={() => void this.copyCard(item)} type="button"><Icon name="copy" size={18}/>{this.t('复制链接', 'Copy link')}</button> : null}</div><div className="inspector-footer-selection-actions">{item.filePath ? <button className="desktop-button" onClick={() => void this.openOriginal(item.filePath as string)} type="button"><Icon name="external-link" size={18}/>{this.t('打开', 'Open')}</button> : null}<button aria-label={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} aria-pressed={favorite} className={`detail-footer-favorite${favorite ? ' active' : ''}`} onClick={() => void this.toggleFavorite(item)} type="button"><Icon filled={favorite} name="star" size={21}/></button></div></div></footer>
             </aside>
         </div>;
     }
@@ -541,7 +572,7 @@ export class SourcebookView extends ItemView {
 
     private renderHandoff(book: Book): JSX.Element {
         let plan: PackPlan | undefined;
-        try { plan = planPack(this.effectiveHandoffItems(), book.title, '', this.handoffSource === 'project' ? this.handoffProject : undefined, this.plugin.settings.language); } catch (error) { this.handoffError = message(error); }
+        try { plan = planPack(this.effectiveHandoffItems(), book.title, '', undefined, this.plugin.settings.language); } catch (error) { this.handoffError = message(error); }
         const fileCount = plan ? handoffFileCount(plan) : 0;
         const linkCount = plan ? plan.items.filter(item => item.status === 'link').length : 0;
         const scopeFiles = plan?.items.filter(item => item.status !== 'link') ?? [];
@@ -552,7 +583,7 @@ export class SourcebookView extends ItemView {
                 <div className="handoff-layout">
                     <section className={`handoff-scope-panel${this.handoffScopeExpanded ? ' is-expanded' : ''}`}>
                         <button aria-controls="handoff-included-list" aria-expanded={this.handoffScopeExpanded} className="handoff-scope-toggle" onClick={() => { this.handoffScopeExpanded = !this.handoffScopeExpanded; this.renderApp(); }} type="button"><span className="handoff-scope-title"><h3>{this.t('范围', 'Scope')}</h3><small>{this.t('文字和笔记会作为文件复制', 'Text and notes are copied as files')}</small></span><span className="handoff-scope-stats"><span>{this.t(`文件：${fileCount}`, `Files: ${fileCount}`)}</span><span>{this.t(`链接：${linkCount}`, `Links: ${linkCount}`)}</span></span><Icon name="chevron-down" size={15}/></button>
-                        {this.handoffScopeExpanded ? <div className="handoff-file-items" id="handoff-included-list">{plan?.items.length ? <div className="handoff-scope-columns"><section className="handoff-scope-column"><h4>{this.t('文件', 'Files')}</h4>{scopeFiles.map((item, index) => <div className="handoff-scope-item"><span className="handoff-status is-file"><Icon name={item.status === 'file' ? 'hard-drive' : item.status === 'text' ? 'file-text' : 'x'} size={14}/></span><span><strong>[{index + 1}] {item.title}</strong><small>{item.status === 'file' ? item.originalPath : item.status === 'text' ? handoffTextFileName(item) : this.t('原文件缺失', 'Original file missing')}</small></span></div>)}</section><section className="handoff-scope-column"><h4>{this.t('链接', 'Links')}</h4>{scopeLinks.map((item, index) => <div className="handoff-scope-item"><span className="handoff-status is-link"><Icon name="link" size={14}/></span><span><strong>[{index + 1}] {item.title}</strong><small>{item.url}</small></span></div>)}</section></div> : <p>{this.t('项目笔记将直接写入提示词。', 'The project note is written directly into the prompt.')}</p>}</div> : null}
+                        {this.handoffScopeExpanded ? <div className="handoff-file-items" id="handoff-included-list">{plan?.items.length ? <div className="handoff-scope-columns"><section className="handoff-scope-column"><h4>{this.t('文件', 'Files')}</h4>{scopeFiles.map(item => <div className="handoff-scope-item"><span className="handoff-status is-file"><Icon name={item.status === 'file' ? 'hard-drive' : item.status === 'text' ? 'file-text' : 'x'} size={14}/></span><span><strong>[{item.ref}] {item.title}</strong><small>{item.status === 'file' ? item.originalPath : item.status === 'text' ? handoffTextFileName(item) : this.t('原文件缺失', 'Original file missing')}</small></span></div>)}</section><section className="handoff-scope-column"><h4>{this.t('链接', 'Links')}</h4>{scopeLinks.map(item => <div className="handoff-scope-item"><span className="handoff-status is-link"><Icon name="link" size={14}/></span><span><strong>[{item.ref}] {item.title}</strong><small>{item.url}</small></span></div>)}</section></div> : <p>{this.t('请先选择素材。', 'Select materials first.')}</p>}</div> : null}
                     </section>
                     <div className="handoff-content">
                         <main><section className="handoff-prompt"><div className="handoff-section-heading"><h3>{this.t('提示词', 'Prompt')}</h3><button className="modal-text-button" onClick={() => this.restoreHandoffPrompt()} type="button">{this.t('恢复默认', 'Restore default')}</button></div><textarea aria-label={this.t('提示词', 'Prompt')} onInput={(event: Event) => { this.handoffPrompt = (event.currentTarget as HTMLTextAreaElement).value; }} value={this.handoffPrompt}/></section><section className="handoff-copy-help"><h3>{this.t('操作说明', 'How it works')}</h3><p>{this.t('先复制文件后在 Agent 输入框粘贴实现文件传入，再复制粘贴提示词，就可以让 Agent 获取并理解所有必要的数据；你可以补充自己的任务说明后直接发送。不同 Agent 对可上传文件的类型和数量要求不同；若上传失败，请重新选择素材后再次打包。', 'Copy files first and paste them into your agent input to attach them. Then copy and paste the prompt so the agent receives and understands the necessary context. Add your task instructions, then send. Each agent has different limits on supported file types and quantity. If uploading fails, select the materials again and create a new pack.')}</p></section></main>
@@ -638,10 +669,11 @@ export class SourcebookView extends ItemView {
         }).open();
     }
 
-    private pickVault(): void {
+    private async pickVault(): Promise<void> {
         const book = this.book;
         if (!book) return;
-        new FilePicker(this.app, file => !file.path.startsWith(`${BOOKS_DIR}/`) && !file.path.startsWith(`${SNAPSHOTS_DIR}/`) && file.path !== `${DATA_DIR}/library.json`, async file => {
+        const managedPaths = await this.plugin.store.managedVaultPaths();
+        new FilePicker(this.app, file => !file.path.startsWith(`${ROOT}/`) && !managedPaths.has(file.path), async file => {
             await this.plugin.store.addVaultFile(book, file.path, this.plugin.settings.language);
             await this.reload();
         }).open();
@@ -695,16 +727,16 @@ export class SourcebookView extends ItemView {
     private createProjectNote(): void {
         const book = this.book; const entries = this.chosenEntries();
         if (!book || !entries.length) return;
-        new FormModal(this.app, this.t('新建项目笔记', 'Create project note'), [{ key: 'path', label: this.t('Vault 内路径', 'Vault path'), value: `${safeName(book.title)}.md` }], this.t('创建并打开', 'Create and open'), async values => {
-            const path = await this.plugin.store.createProjectNote(book, entries, values.path || `${safeName(book.title)}.md`, this.plugin.settings.language);
+        void this.plugin.store.createSummaryNote(book, entries, this.plugin.settings.language).then(async path => {
             await this.plugin.io.open(path);
-        }).open();
+            this.notify(this.t('已创建项目笔记', 'Project note created'));
+        }).catch(error => this.notify(message(error), 'error'));
     }
 
     private addToExistingNote(): void {
         const book = this.book; const entries = this.chosenEntries();
         if (!book || !entries.length) return;
-        new FilePicker(this.app, file => file.extension === 'md' && !file.path.startsWith(`${BOOKS_DIR}/`) && !file.path.startsWith(`${SNAPSHOTS_DIR}/`) && !file.path.startsWith(`${DATA_DIR}/`), async file => {
+        new FilePicker(this.app, file => file.extension === 'md' && !file.path.startsWith(`${ROOT}/`), async file => {
             await this.plugin.store.appendReferences(book, entries, file.path, this.plugin.settings.language);
             await this.plugin.io.open(file.path);
             this.notify(this.t('素材和备注已添加到笔记', 'Materials and context were added to the note'));
@@ -741,12 +773,19 @@ export class SourcebookView extends ItemView {
         new ConfirmModal(this.app, this.t('删除所选素材？', 'Delete selected sources?'), detail, this.t('删除', 'Delete'), async () => { await this.plugin.store.deleteEntries(book, ids, hasFiles); this.selected.clear(); this.selectionMode = false; await this.reload(); }).open();
     }
 
-    private async saveDetailNote(item: Resolved, event: FocusEvent): Promise<void> {
+    private async saveDetailNote(item: Resolved): Promise<void> {
         const book = this.book; if (!book) return;
-        const value = (event.currentTarget as HTMLTextAreaElement).value;
+        const value = this.detailNoteDrafts.get(item.entry.id) ?? item.entry.note;
         if (value === item.entry.note) return;
-        try { await this.plugin.store.updateNote(book, item.entry.id, value, item.entry.note); this.notify(this.t('备注已保存', 'Context saved')); await this.reload(); }
-        catch (error) { this.notify(message(error), 'error'); }
+        const active = this.detailNoteSaveJobs.get(item.entry.id);
+        if (active) return active;
+        const job = (async () => {
+            try { await this.plugin.store.updateNote(book, item.entry.id, value, item.entry.note); this.detailNoteDrafts.delete(item.entry.id); this.notify(this.t('备注已保存', 'Context saved')); await this.reload(); }
+            catch (error) { this.notify(message(error), 'error'); }
+        })();
+        this.detailNoteSaveJobs.set(item.entry.id, job);
+        void job.finally(() => { if (this.detailNoteSaveJobs.get(item.entry.id) === job) this.detailNoteSaveJobs.delete(item.entry.id); });
+        return job;
     }
 
     private async openOriginal(path: string): Promise<void> {
@@ -759,17 +798,29 @@ export class SourcebookView extends ItemView {
         catch (error) { this.notify(message(error), 'error'); }
     }
 
-    private async saveDetailText(item: Resolved, event: FocusEvent): Promise<void> {
+    private async saveDetailText(item: Resolved, draft?: string): Promise<void> {
         const book = this.book; if (!book || item.entry.type !== 'text') return;
-        const value = (event.currentTarget as HTMLTextAreaElement).value;
+        const value = draft ?? this.detailTextDrafts.get(item.entry.id) ?? item.body;
         if (value === item.body) return;
-        try { await this.plugin.store.updateText(book, item.entry.id, value, item.body); this.notify(this.t('文本已保存', 'Text saved')); await this.reload(); }
-        catch (error) { this.notify(message(error), 'error'); }
+        const active = this.detailTextSaveJobs.get(item.entry.id);
+        if (active) return active;
+        const job = (async () => {
+            try { await this.plugin.store.updateText(book, item.entry.id, value, item.body); this.detailTextDrafts.delete(item.entry.id); this.notify(this.t('文本已保存', 'Text saved')); await this.reload(); }
+            catch (error) { this.notify(message(error), 'error'); }
+        })();
+        this.detailTextSaveJobs.set(item.entry.id, job);
+        void job.finally(() => { if (this.detailTextSaveJobs.get(item.entry.id) === job) this.detailTextSaveJobs.delete(item.entry.id); });
+        return job;
+    }
+
+    private rememberDuration(entryId: string, duration: number): void {
+        if (!Number.isFinite(duration) || duration <= 0 || this.mediaDurations.get(entryId) === duration) return;
+        this.mediaDurations.set(entryId, duration);
     }
 
     private async editTitle(item: Resolved): Promise<void> {
         const book = this.book;
-        if (!book || item.entry.type === 'file') return;
+        if (!book) return;
         new FormModal(this.app, this.t('编辑标题', 'Edit title'), [{ key: 'title', label: this.t('标题', 'Title'), value: item.title, required: true, maxLength: 160 }], this.t('保存', 'Save'), async values => {
             await this.plugin.store.updateTitle(book, item.entry.id, values.title || '', item.entry.title || '');
             await this.reload();
@@ -787,6 +838,11 @@ export class SourcebookView extends ItemView {
 
     private async copyCard(item: Resolved): Promise<void> {
         try {
+            if ((item.kind === 'link' || item.kind === 'post') && item.url) {
+                await copyText(item.url);
+                this.notify(this.t('链接已复制', 'Link copied'));
+                return;
+            }
             if (item.filePath) { await this.copyOne(item); return; }
             const value = item.entry.type === 'text' ? item.body : item.url;
             if (!value) throw new Error(this.t('没有可复制的文本内容', 'No text content to copy'));
@@ -797,30 +853,32 @@ export class SourcebookView extends ItemView {
         }
     }
 
+    private openDetail(item: Resolved, focusNote = false): void {
+        this.detailId = item.entry.id;
+        this.focusDetailNote = focusNote;
+        if (!this.detailNoteDrafts.has(item.entry.id)) this.detailNoteDrafts.set(item.entry.id, item.entry.note);
+        if (!this.detailTextDrafts.has(item.entry.id)) this.detailTextDrafts.set(item.entry.id, item.body);
+        this.renderApp();
+    }
+
+    private closeDetail(item: Resolved): void {
+        void this.saveDetailNote(item);
+        void this.saveDetailText(item);
+        this.detailId = '';
+        this.focusDetailNote = false;
+        this.renderApp();
+    }
+
     private startBatchSelection(): void {
-        this.handoffChoiceOpen = false;
         this.selectionIntent = 'batch';
         this.selectionMode = true;
         this.renderApp();
     }
 
     private startHandoffSelection(): void {
-        this.handoffChoiceOpen = false;
         this.selected.clear();
         this.selectionIntent = 'handoff';
         this.selectionMode = true;
-        this.renderApp();
-    }
-
-    private startProjectHandoff(): void {
-        this.handoffChoiceOpen = false;
-        this.selected.clear();
-        this.selectionIntent = 'handoff';
-        this.selectionMode = false;
-        this.handoffSource = 'project';
-        this.handoffProject = undefined;
-        this.handoffProjectItems = [];
-        this.chooseProjectNote();
         this.renderApp();
     }
 
@@ -833,9 +891,6 @@ export class SourcebookView extends ItemView {
 
     private openHandoffFromSources(): void {
         if (!this.selected.size || !this.book) return;
-        this.handoffSource = 'sources';
-        this.handoffProject = undefined;
-        this.handoffProjectItems = [];
         this.handoffStatus = '';
         this.handoffError = '';
         this.handoffScopeExpanded = false;
@@ -845,30 +900,18 @@ export class SourcebookView extends ItemView {
     }
 
     private effectiveHandoffItems(): Resolved[] {
-        return this.handoffSource === 'project' ? this.handoffProjectItems : this.chosen();
+        return this.chosen();
     }
 
     private defaultHandoffPrompt(): string {
         if (!this.book) return '';
-        const project = this.handoffSource === 'project' ? this.handoffProject : undefined;
-        return promptFor(planPack(this.effectiveHandoffItems(), this.book.title, '', project, this.plugin.settings.language));
+        return promptFor(planPack(this.effectiveHandoffItems(), this.book.title, '', undefined, this.plugin.settings.language));
     }
 
     private restoreHandoffPrompt(): void {
         try { this.handoffPrompt = this.defaultHandoffPrompt(); this.handoffError = ''; }
         catch (error) { this.handoffError = message(error); this.notify(message(error), 'error'); }
         this.renderApp();
-    }
-
-    private chooseProjectNote(): void {
-        new FilePicker(this.app, file => file.extension === 'md' && !file.path.startsWith(`${BOOKS_DIR}/`) && !file.path.startsWith(`${SNAPSHOTS_DIR}/`) && !file.path.startsWith(`${DATA_DIR}/`), async file => {
-            this.handoffProject = { path: file.path, body: await this.plugin.store.projectNote(file.path) };
-            this.handoffProjectItems = await this.plugin.store.referencedItems(file.path);
-            this.handoffPrompt = this.defaultHandoffPrompt();
-            this.handoffScopeExpanded = false;
-            this.handoffOpen = true;
-            this.handoffStatus = ''; this.handoffError = ''; this.renderApp();
-        }).open();
     }
 
     private async copyHandoffPrompt(): Promise<void> {

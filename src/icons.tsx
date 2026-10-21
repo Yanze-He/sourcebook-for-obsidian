@@ -5,7 +5,7 @@ export type IconName =
     | 'file-text' | 'settings' | 'refresh' | 'chevron-down' | 'more' | 'check' | 'trash' | 'message'
     | 'arrow-left-right' | 'package' | 'x' | 'pencil' | 'hard-drive' | 'external-link' | 'help'
     | 'copy' | 'languages' | 'plus' | 'puzzle' | 'archive' | 'book-open' | 'folder-open' | 'send' | 'eye'
-    | 'image' | 'video' | 'audio' | 'file' | 'text' | 'info' | 'circle-check' | 'clock' | 'panel-top';
+    | 'image' | 'video' | 'audio' | 'file' | 'text' | 'info' | 'circle-check' | 'clock' | 'panel-top' | 'play' | 'pause';
 
 const paths: Record<IconName, Child> = {
     search: <><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></>,
@@ -50,6 +50,8 @@ const paths: Record<IconName, Child> = {
     'circle-check': <><circle cx="12" cy="12" r="9"/><path d="m8 12 3 3 5-6"/></>,
     clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
     'panel-top': <><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18"/></>
+    ,play: <path d="m8 5 11 7-11 7Z"/>
+    ,pause: <><path d="M8 5v14"/><path d="M16 5v14"/></>
 };
 
 export function Icon({ name, size = 18, className = '', filled = false }: { name: IconName; size?: number; className?: string; filled?: boolean }): JSX.Element {

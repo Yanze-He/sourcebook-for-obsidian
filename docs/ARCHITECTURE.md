@@ -4,19 +4,18 @@ Sourcebook v2 keeps one authoritative copy of content:
 
 - Existing Vault files are materials directly; no wrapper Source Markdown is created.
 - Short text and simple links live inside readable Book entries.
-- Reusable long text can be promoted to a real Markdown file under `Sourcebook/Materials/`.
 - Book membership, order and Book-specific notes live in the Book Markdown body.
 - Project notes use native Obsidian links for files and ordinary Markdown for
   text and Book context. This deliberately makes inserted context a user-owned
   snapshot while preserving native file backlinks.
-- Quick AI handoff uses original files. Only an explicit snapshot copies files.
+- Quick AI handoff uses original files.
 
 ## Modules
 
 - `core.ts`: schema-v2 Book blocks, validation, IDs, registry and pure data rules.
 - `store.ts`: Book/material operations over the minimal `VaultIO` port.
 - `host.ts`: the sole adapter to Obsidian Vault/FileManager/workspace APIs.
-- `pack.ts`: quick-handoff plan, prompt and explicit snapshot export.
+- `pack.ts`: quick-handoff plan and prompt construction.
 - `clipboard.ts`: optional native original-file clipboard; off by default.
 - `view.ts`, `ui.ts`: native ItemView and Modal UI.
 - `main.ts`: plugin lifecycle, rename tracking and settings.
@@ -26,10 +25,9 @@ Sourcebook v2 keeps one authoritative copy of content:
 ```text
 Sourcebook/
   Books/       readable Book Markdown and entry blocks
-  Materials/   promoted reusable text/link Markdown
+  Project Notes/ generated project-note summaries
   Assets/      files explicitly imported from outside the Vault
   _data/       optional source/import metadata only
-  Snapshots/   explicit frozen AI handoff snapshots
 ```
 
 `Sourcebook/_data/library.json` never stores Book membership, Book notes, titles,
@@ -51,9 +49,9 @@ wiki link (or an embed for previewable media); a text entry and its Book context
 become regular Markdown. This means later Book-note edits do not rewrite project
 prose. When a project note is handed to AI, direct native links to active,
 non-Markdown Sourcebook files are collected as attachments. The note's own prose
-is the prompt context. Links to `Sourcebook/Assets/*.md` or
-`Sourcebook/Materials/*.md` stay navigational and their Markdown body is not read
-or attached. Legacy embedded Book blocks remain readable for compatibility.
+is the prompt context. Links to `Sourcebook/Assets/*.md` stay navigational and
+their Markdown body is not read or attached. Legacy embedded Book blocks remain
+readable for compatibility.
 
 ## Safety and recovery
 

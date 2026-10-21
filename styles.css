@@ -508,7 +508,14 @@
 .source-file-preview .source-card-kind span { margin-left: 2px; color: var(--sb-muted); font-size: 10px; font-weight: 650; }
 .source-audio-preview { display: grid; gap: 10px; min-height: 92px; padding: 16px; background: #eeefea; color: #37774a; }
 .source-audio-preview .source-card-kind { margin: 0; }
-.source-audio-preview audio { width: 100%; min-width: 0; height: 32px; }
+.source-audio-player { display: inline-flex; align-items: center; gap: 7px; min-width: 0; color: #37774a; font-size: 11px; font-variant-numeric: tabular-nums; }
+.source-audio-player audio { display: none; }
+.source-audio-play { display: grid; width: 22px; height: 22px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: currentColor; cursor: pointer; }
+.source-audio-play:hover { color: var(--sb-blue); }
+.source-audio-pause-icon { display: none; }
+.source-audio-player.is-playing .source-audio-play-icon { display: none; }
+.source-audio-player.is-playing .source-audio-pause-icon { display: block; }
+.source-audio-player time { color: #64635e; }
 .detail-audio-preview { display: grid; place-items: center; min-height: 96px; padding: 22px; }
 .detail-audio-preview audio { width: min(100%, 560px); }
 
@@ -575,7 +582,7 @@
 .source-masonry-card > .source-masonry-media .source-masonry-media-button:focus-visible { outline: 2px solid var(--sb-blue); outline-offset: -3px; }
 .source-masonry-card > .source-masonry-media .source-masonry-media-button .media-thumb { height: 100%; max-height: none; object-fit: cover; }
 .source-masonry-media { position: relative; }
-.source-media-badge { position: absolute; top: 9px; left: 9px; z-index: 2; display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 0 7px; border-radius: 5px; background: rgba(17,17,15,.48); color: #fff; font-size: 10px; font-weight: 720; line-height: 1; pointer-events: none; font-variant-numeric: tabular-nums; }
+.source-media-badge { position: absolute; top: 9px; left: 9px; z-index: 2; display: inline-flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 8px; border-radius: 6px; background: rgba(17,17,15,.48); color: #fff; font-size: 11px; font-weight: 720; line-height: 1; pointer-events: none; font-variant-numeric: tabular-nums; }
 .source-media-badge svg { flex: 0 0 auto; }
 .source-masonry-card.kind-text .source-text-preview,
 .source-masonry-card.kind-note .source-text-preview { container-type: inline-size; max-height: none; min-height: 0; padding: 16px; background: #fafaf8; }
@@ -838,7 +845,7 @@
 .inspector-footer-utility,
 .inspector-footer-selection-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .inspector-footer-selection-actions { margin-left: auto; }
-.detail-delete-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 11px; border: 1px solid rgba(230,75,97,.62); border-radius: 8px; background: transparent; color: var(--sb-rose); font-size: 12px; font-weight: 700; }
+.detail-delete-button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 34px; padding: 0 11px; border: 1px solid var(--sb-rose); border-radius: 8px; background: transparent; color: var(--sb-rose); font-size: 12px; font-weight: 700; }
 .detail-delete-button:hover { border-color: var(--sb-rose); background: var(--sb-rose-soft); }
 .detail-footer-favorite { display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 1px solid var(--sb-line); border-radius: 8px; background: transparent; color: var(--sb-muted); }
 .detail-footer-favorite:hover { border-color: var(--sb-line-strong); background: var(--sb-surface-2); color: var(--sb-ink); }
@@ -935,7 +942,7 @@
 .handoff-modal > footer > div { display: flex; align-items: center; gap: 8px; }
 
 /* Toast */
-.sources-message { position: absolute; z-index: 300; top: 18px; left: 18px; display: inline-flex; align-items: center; gap: 8px; width: max-content; max-width: min(420px, calc(100% - 36px)); padding: 11px 14px; border-radius: 9px; background: #11110f; box-shadow: 0 12px 30px rgba(17,17,15,.25); color: #fff; font-size: 12px; }
+.sources-message { position: fixed; z-index: 300; top: 18px; left: 50%; display: inline-flex; align-items: center; gap: 8px; width: max-content; max-width: min(420px, calc(100% - 36px)); padding: 11px 14px; border-radius: 9px; background: #11110f; box-shadow: 0 12px 30px rgba(17,17,15,.25); color: #fff; font-size: 12px; transform: translateX(-50%); }
 .sources-message.is-success svg { color: #8ee0ae; }
 .sources-message.is-error svg { color: #ff9797; }
 

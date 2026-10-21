@@ -92,14 +92,20 @@ function markdownFor(payload: PickerPayload): string {
 }
 
 function pickerFor(payload: PickerPayload): PickerMetadata {
+    const candidateDuration = payload.pageMetadata?.mediaDurationSeconds;
+    const durationSeconds = typeof candidateDuration === 'number' && Number.isFinite(candidateDuration) && candidateDuration > 0
+        ? candidateDuration
+        : undefined;
     return {
         modality: payload.modality,
         title: titleFor(payload),
+        contentText: payload.modality === 'text' ? payload.contentText?.slice(0, 20_000) : undefined,
         sourceUrl: payload.sourceUrl,
         sourceTitle: payload.sourceTitle,
         sourceOrigin: payload.sourceOrigin,
         thumbnailUrl: payload.thumbnailUrl,
         faviconUrl: payload.faviconUrl,
+        ...(durationSeconds ? { durationSeconds } : {}),
         pickedAt: payload.pickedAt
     };
 }

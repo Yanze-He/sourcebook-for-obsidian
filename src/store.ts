@@ -1,7 +1,7 @@
 import {
-    ACTIVE_START, ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Kind, Library, MATERIALS_DIR,
-    MaterialMetadata, MAX_IMPORT_BYTES, newBookBody, PickerMetadata, plainTitle, parseRegistry, REGISTRY_PATH, Resolved, ROOT, safeName,
-    safeRelative, SCHEMA, serialize, SerialQueue, SNAPSHOTS_DIR, titleFromPath, VaultIO, webUrl, decodeBook, rewriteBookBody,
+    ACTIVE_START, ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Kind, Library,
+    MaterialMetadata, MAX_IMPORT_BYTES, newBookBody, PickerMetadata, plainTitle, parseRegistry, PROJECT_NOTES_DIR, REGISTRY_PATH, Resolved, ROOT, safeName,
+    safeRelative, SCHEMA, serialize, SerialQueue, titleFromPath, VaultIO, webUrl, decodeBook, rewriteBookBody,
     kindFor, message, DocumentLanguage
 } from './core';
 
@@ -16,7 +16,7 @@ export class SourcebookStore {
     }
 
     async folders(): Promise<void> {
-        for (const path of [ROOT, BOOKS_DIR, MATERIALS_DIR, ASSETS_DIR, DATA_DIR, SNAPSHOTS_DIR]) {
+        for (const path of [ROOT, BOOKS_DIR, PROJECT_NOTES_DIR, ASSETS_DIR, DATA_DIR]) {
             if (!this.io.exists(path)) await this.io.mkdir(path);
         }
     }
@@ -147,11 +147,11 @@ export class SourcebookStore {
         return attached;
     }
 
-    private async addVaultFileUnlocked(book: Book, path: string, language: DocumentLanguage, picker?: PickerMetadata): Promise<Entry> {
+    private async addVaultFileUnlocked(book: Book, path: string, language: DocumentLanguage, picker?: PickerMetadata, allowManagedAsset = false): Promise<Entry> {
         safeRelative(path);
         const file = this.io.getFile(path);
         if (!file) throw new Error('File does not exist');
-        if (path.startsWith(`${BOOKS_DIR}/`) || path.startsWith(`${SNAPSHOTS_DIR}/`) || path === REGISTRY_PATH) throw new Error('Select material content, not a Sourcebook control record');
+        if (path === ROOT || (path.startsWith(`${ROOT}/`) && !(allowManagedAsset && path.startsWith(`${ASSETS_DIR}/`)))) throw new Error('Select a Vault file outside Sourcebook');
         const kind = kindFor(file.name);
         const target = this.io.link(path, book.path, ['image', 'audio', 'video'].includes(kind));
         return this.addEntry(book, { id: entryId(), type: 'file', removed: false, note: '', target, language, ...(picker ? { picker } : {}) });
@@ -225,7 +225,7 @@ export class SourcebookStore {
                 };
                 await this.saveRegistry(registry);
             }
-            return this.addVaultFileUnlocked(book, path, language, picker);
+            return this.addVaultFileUnlocked(book, path, language, picker, true);
         });
     }
 
@@ -234,7 +234,11 @@ export class SourcebookStore {
             await this.mutateBook(book, entries => {
                 const current = entries.find(entry => entry.id === entryIdValue);
                 if (!current) throw new Error('Entry has been removed; reload');
-                if (expected !== undefined && current.note !== expected) throw new Error('Note changed while this dialog was open. Reopen it to avoid overwriting new content.');
+                // A detail view can save on both blur and close.  Once the first
+                // write lands, the second one is intentionally a no-op rather
+                // than a stale-editor conflict.
+                if (expected !== undefined && current.note !== expected && current.note !== note) throw new Error('Note changed while this dialog was open. Reopen it to avoid overwriting new content.');
+                if (current.note === note) return entries;
                 return entries.map(entry => entry.id === entryIdValue ? { ...entry, note } : entry);
             });
         });
@@ -248,7 +252,9 @@ export class SourcebookStore {
             await this.mutateBook(book, entries => {
                 const current = entries.find(entry => entry.id === entryIdValue);
                 if (!current || current.type !== 'text') throw new Error('Text source no longer exists; reload');
-                if (expected !== undefined && current.body !== expected) throw new Error('Text changed while this detail view was open. Reopen it to avoid overwriting new content.');
+                // See updateNote: repeated saves of the same text are safe.
+                if (expected !== undefined && current.body !== expected && current.body !== nextBody) throw new Error('Text changed while this detail view was open. Reopen it to avoid overwriting new content.');
+                if (current.body === nextBody) return entries;
                 return entries.map(entry => entry.id === entryIdValue ? { ...entry, body: nextBody, updatedAt: new Date().toISOString() } : entry);
             });
         });
@@ -257,10 +263,24 @@ export class SourcebookStore {
     async updateTitle(book: Book, entryIdValue: string, title: string, expected?: string): Promise<void> {
         return this.queue.run(async () => {
             const nextTitle = plainTitle(title);
+            const { book: currentBook } = await this.currentBook(book);
+            const current = currentBook.entries.find(entry => entry.id === entryIdValue);
+            if (!current) throw new Error('Material no longer exists; reload');
+            if (expected !== undefined && (current.title || '') !== expected) throw new Error('Title changed while this detail view was open. Reopen it to avoid overwriting new content.');
+            if (current.type === 'file') {
+                const currentPath = this.io.resolveAttachment(current.target || '', currentBook.path);
+                const file = currentPath ? this.io.getFile(currentPath) : undefined;
+                if (!currentPath || !file) throw new Error('Original file no longer exists; reload');
+                const folder = currentPath.split('/').slice(0, -1).join('/');
+                const extension = file.extension ? `.${file.extension}` : '';
+                const nextPath = `${folder ? `${folder}/` : ''}${safeName(nextTitle)}${extension}`;
+                if (nextPath !== currentPath && this.io.exists(nextPath)) throw new Error('A file with that name already exists');
+                if (nextPath !== currentPath) await this.io.rename(currentPath, nextPath);
+                const target = this.io.link(nextPath, currentBook.path, ['image', 'audio', 'video'].includes(kindFor(file.name)));
+                await this.mutateBook(currentBook, entries => entries.map(entry => entry.id === entryIdValue ? { ...entry, title: nextTitle, target, updatedAt: new Date().toISOString() } : entry));
+                return;
+            }
             await this.mutateBook(book, entries => {
-                const current = entries.find(entry => entry.id === entryIdValue);
-                if (!current || current.type === 'file') throw new Error('This material title cannot be edited');
-                if (expected !== undefined && current.title !== expected) throw new Error('Title changed while this detail view was open. Reopen it to avoid overwriting new content.');
                 return entries.map(entry => entry.id === entryIdValue ? { ...entry, title: nextTitle, updatedAt: new Date().toISOString() } : entry);
             });
         });
@@ -289,29 +309,6 @@ export class SourcebookStore {
         });
     }
 
-    async promote(book: Book, entryIdValue: string, language: DocumentLanguage = book.language): Promise<string> {
-        return this.queue.run(async () => {
-            await this.folders();
-            const { book: current } = await this.currentBook(book);
-            const entry = current.entries.find(candidate => candidate.id === entryIdValue);
-            if (!entry) throw new Error('Entry does not exist');
-            if (entry.type === 'file') {
-                const path = this.io.resolveAttachment(entry.target || '', current.path);
-                if (!path) throw new Error('Material file is missing');
-                return path;
-            }
-            const title = plainTitle(entry.title || 'Material');
-            const path = await this.uniquePath(MATERIALS_DIR, title, 'md');
-            const meta: Record<string, unknown> = { sb_type: 'material', sb_schema: SCHEMA, sb_id: id(), sb_language: language, captured_at: new Date().toISOString() };
-            if (entry.url) meta.source_url = entry.url;
-            const body = entry.type === 'text' ? entry.body || '' : entry.url || '';
-            await this.io.create(path, serialize(meta, body));
-            const target = this.io.link(path, current.path, false);
-            await this.mutateBook(current, entries => entries.map(candidate => candidate.id === entryIdValue ? { id: candidate.id, type: 'file', removed: candidate.removed, note: candidate.note, target, language: candidate.language } : candidate));
-            return path;
-        });
-    }
-
     async resolve(book: Book, includeRemoved = false): Promise<{ items: Resolved[]; warnings: string[] }> {
         const items: Resolved[] = [], warnings: string[] = [];
         const registry = await this.loadRegistry().catch(error => { warnings.push(message(error)); return emptyRegistry(); });
@@ -323,6 +320,7 @@ export class SourcebookStore {
                 const file = path ? this.io.getFile(path) : undefined;
                 const picker = entry.picker;
                 let body = '', url = picker?.sourceUrl || metadataByPath.get(path || '')?.sourceUrl || '';
+                if (picker?.modality === 'text' && picker.contentText) body = picker.contentText;
                 if (file?.extension.toLowerCase() === 'md') {
                     try {
                         const parsed = this.io.parse(await this.io.read(file.path));
@@ -331,15 +329,32 @@ export class SourcebookStore {
                     } catch (error) { warnings.push(`${file.path}: ${message(error)}`); }
                 }
                 const pickedAt = picker?.pickedAt ? Date.parse(picker.pickedAt) : NaN;
-                items.push({ entry, bookPath: book.path, title: picker?.title || (file ? titleFromPath(file.path) : 'Missing material'), kind: picker?.modality || (file ? kindFor(file.name) : 'file'), body, url, filePath: file?.path, missing: !file, fileSize: file?.size || 0, modifiedAt: Number.isFinite(pickedAt) ? pickedAt : file?.mtime, thumbnailUrl: picker?.thumbnailUrl, faviconUrl: picker?.faviconUrl, sourceTitle: picker?.sourceTitle, sourceOrigin: picker?.sourceOrigin, pickedAt: picker?.pickedAt });
+                items.push({ entry, bookPath: book.path, title: entry.title || picker?.title || (file ? titleFromPath(file.path) : 'Missing material'), kind: picker?.modality || (file ? kindFor(file.name) : 'file'), body, url, filePath: file?.path, missing: !file, fileSize: file?.size || 0, modifiedAt: Number.isFinite(pickedAt) ? pickedAt : file?.mtime, thumbnailUrl: picker?.thumbnailUrl, faviconUrl: picker?.faviconUrl, sourceTitle: picker?.sourceTitle, sourceOrigin: picker?.sourceOrigin, durationSeconds: picker?.durationSeconds, pickedAt: picker?.pickedAt });
                 continue;
             }
             const picker = entry.picker;
             const pickedAt = picker?.pickedAt ? Date.parse(picker.pickedAt) : NaN;
             const updatedAt = entry.updatedAt ? Date.parse(entry.updatedAt) : NaN;
-            items.push({ entry, bookPath: book.path, title: picker?.title || entry.title || 'Untitled', kind: picker?.modality || (entry.type === 'text' ? 'text' : 'link'), body: entry.type === 'text' ? entry.body || '' : '', url: picker?.modality === 'audio' || picker?.modality === 'video' ? entry.url || picker?.sourceUrl || '' : picker?.sourceUrl || entry.url || '', missing: false, fileSize: 0, modifiedAt: Number.isFinite(pickedAt) ? pickedAt : Number.isFinite(updatedAt) ? updatedAt : undefined, thumbnailUrl: picker?.thumbnailUrl, faviconUrl: picker?.faviconUrl, sourceTitle: picker?.sourceTitle, sourceOrigin: picker?.sourceOrigin, pickedAt: picker?.pickedAt });
+            // Older Picker text entries can have their selection preserved only in
+            // Picker metadata. Prefer the editable Book body, but recover that
+            // metadata so existing captures remain visible and editable.
+            const body = entry.type === 'text' ? entry.body || (picker?.modality === 'text' ? picker.contentText || '' : '') : '';
+            items.push({ entry, bookPath: book.path, title: picker?.title || entry.title || 'Untitled', kind: picker?.modality || (entry.type === 'text' ? 'text' : 'link'), body, url: picker?.modality === 'audio' || picker?.modality === 'video' ? entry.url || picker?.sourceUrl || '' : picker?.sourceUrl || entry.url || '', missing: false, fileSize: 0, modifiedAt: Number.isFinite(pickedAt) ? pickedAt : Number.isFinite(updatedAt) ? updatedAt : undefined, thumbnailUrl: picker?.thumbnailUrl, faviconUrl: picker?.faviconUrl, sourceTitle: picker?.sourceTitle, sourceOrigin: picker?.sourceOrigin, durationSeconds: picker?.durationSeconds, pickedAt: picker?.pickedAt });
         }
         return { items, warnings };
+    }
+
+    /** Active original files across every Book; used to avoid duplicate management. */
+    async managedVaultPaths(): Promise<Set<string>> {
+        const managed = new Set<string>();
+        const library = await this.load();
+        for (const book of library.books) {
+            const { items } = await this.resolve(book);
+            for (const item of items) {
+                if (item.filePath && !item.filePath.startsWith(`${ROOT}/`)) managed.add(item.filePath);
+            }
+        }
+        return managed;
     }
 
     /**
@@ -353,17 +368,14 @@ export class SourcebookStore {
         return entries.map(entry => {
             if (entry.type === 'file') {
                 const path = this.io.resolveAttachment(entry.target || '', book.path);
-                if (!path) return [entry.target || '', note(entry)].filter(Boolean).join('\n\n');
+                if (!path) return [entry.target || '', note(entry)].filter(Boolean).join(' ');
                 const file = this.io.getFile(path);
                 const embed = Boolean(file && ['image', 'audio', 'video'].includes(kindFor(file.name)));
-                return [this.io.link(path, target, embed), note(entry)].filter(Boolean).join('\n\n');
+                return [this.io.link(path, target, embed), note(entry)].filter(Boolean).join(' ');
             }
-            if (entry.type === 'text') {
-                const source = entry.url ? `[${entry.language === 'zh' ? '来源' : 'Source'}](${entry.url})` : '';
-                return [`**${entry.title || this.defaultInlineTitle('text', entry.language || book.language)}**`, entry.body || '', source, note(entry)].filter(Boolean).join('\n\n');
-            }
-            return [`[${entry.title || this.defaultInlineTitle('link', entry.language || book.language)}](${entry.url || ''})`, note(entry)].filter(Boolean).join('\n\n');
-        }).filter(Boolean).join('\n\n---\n\n') + '\n';
+            if (entry.type === 'text') return entry.body || '';
+            return [`[${entry.title || this.defaultInlineTitle('link', entry.language || book.language)}](${entry.url || ''})`, note(entry)].filter(Boolean).join(' ');
+        }).filter(Boolean).join('\n\n') + '\n';
     }
 
     async createProjectNote(book: Book, entries: Entry[], path: string, language: DocumentLanguage = 'en'): Promise<string> {
@@ -371,15 +383,12 @@ export class SourcebookStore {
             path = path.trim().replace(/\\/g, '/');
             if (!path.toLowerCase().endsWith('.md')) path += '.md';
             safeRelative(path);
-            if (path.startsWith(`${BOOKS_DIR}/`) || path.startsWith(`${DATA_DIR}/`) || path.startsWith(`${SNAPSHOTS_DIR}/`)) throw new Error('Choose a normal project-note location');
+            if (path.startsWith(`${BOOKS_DIR}/`) || path.startsWith(`${DATA_DIR}/`)) throw new Error('Choose a normal project-note location');
             if (this.io.exists(path)) throw new Error('A file already exists at that path');
             const latest = await this.currentBook(book);
             const selected = entries.map(entry => latest.book.entries.find(candidate => candidate.id === entry.id)).filter((entry): entry is Entry => Boolean(entry));
-            const title = titleFromPath(path);
             const refs = this.referenceFragment(latest.book, selected, path);
-            const text = language === 'zh'
-                ? `# ${title}\n\n## 项目目标\n\n\n\n## 当前思路\n\n\n\n## 参考素材\n\n${refs}\n## 待确认问题\n`
-                : `# ${title}\n\n## Project goal\n\n\n\n## Current direction\n\n\n\n## Reference materials\n\n${refs}\n## Open questions\n`;
+            const text = refs;
             const folders = path.split('/').slice(0, -1);
             let folderPath = '';
             for (const folder of folders) {
@@ -391,16 +400,32 @@ export class SourcebookStore {
         });
     }
 
+    async createSummaryNote(book: Book, entries: Entry[], language: DocumentLanguage = 'en'): Promise<string> {
+        return this.queue.run(async () => {
+            await this.folders();
+            const stem = language === 'zh' ? '项目笔记' : 'Project Note';
+            let path = '';
+            for (let index = 1; index < 10000; index++) {
+                const candidate = `${PROJECT_NOTES_DIR}/${stem} ${index}.md`;
+                if (!this.io.exists(candidate)) { path = candidate; break; }
+            }
+            if (!path) throw new Error('Could not find a free summary-note name');
+            const latest = await this.currentBook(book);
+            const selected = entries.map(entry => latest.book.entries.find(candidate => candidate.id === entry.id)).filter((entry): entry is Entry => Boolean(entry));
+            await this.io.create(path, this.referenceFragment(latest.book, selected, path));
+            return path;
+        });
+    }
+
     async appendReferences(book: Book, entries: Entry[], path: string, language: DocumentLanguage = 'en'): Promise<void> {
         safeRelative(path);
         if (!path.endsWith('.md') || !this.io.getFile(path)) throw new Error('Target note does not exist');
-        if (path.startsWith(`${BOOKS_DIR}/`) || path.startsWith(`${DATA_DIR}/`) || path.startsWith(`${SNAPSHOTS_DIR}/`)) throw new Error('Cannot append to a Sourcebook control record');
-        const heading = language === 'zh' ? '参考素材' : 'Reference materials';
+        if (path.startsWith(`${BOOKS_DIR}/`) || path.startsWith(`${DATA_DIR}/`)) throw new Error('Cannot append to a Sourcebook control record');
         await this.queue.run(async () => {
             const current = await this.currentBook(book);
             const selected = entries.map(entry => current.book.entries.find(candidate => candidate.id === entry.id)).filter((entry): entry is Entry => Boolean(entry));
             const fragment = this.referenceFragment(current.book, selected, path);
-            await this.io.process(path, text => `${text.trimEnd()}\n\n## ${heading}\n\n${fragment}`);
+            await this.io.process(path, text => `${text.trimEnd()}\n\n${fragment}`);
         });
     }
 
@@ -409,14 +434,14 @@ export class SourcebookStore {
         const file = this.io.getFile(path);
         if (!file || file.extension.toLowerCase() !== 'md') throw new Error('Project note does not exist');
         const body = this.io.parse(await this.io.read(path)).body;
-        // Material Markdown is a navigational source document, not task prose.
+        // Captured Markdown is a navigational source document, not task prose.
         // Keep a readable label in the prompt, but never dereference or attach
         // its Markdown body when a project note is handed to an Agent.
         return body.replace(/!?\[\[([^#\]|]+)(?:#[^\]|]+)?(?:\|([^\]]*))?\]\]/g, (raw, _linkPath: string, alias: string | undefined) => {
             const resolved = this.io.resolveAttachment(raw, path);
             const linked = resolved ? this.io.getFile(resolved) : undefined;
             if (!linked || linked.extension.toLowerCase() !== 'md') return raw;
-            if (!linked.path.startsWith(`${ASSETS_DIR}/`) && !linked.path.startsWith(`${MATERIALS_DIR}/`)) return raw;
+            if (!linked.path.startsWith(`${ASSETS_DIR}/`)) return raw;
             return (alias || titleFromPath(linked.path)).trim();
         });
     }

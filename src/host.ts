@@ -65,7 +65,7 @@ export class ObsidianVaultIO implements VaultIO {
     async open(path: string): Promise<void> {
         const file = this.file(path);
         if (this.opensInsideObsidian(file)) {
-            await this.app.workspace.getLeaf(false).openFile(file);
+            await this.app.workspace.getLeaf('tab').openFile(file);
             return;
         }
         const shell = this.electronShell();
