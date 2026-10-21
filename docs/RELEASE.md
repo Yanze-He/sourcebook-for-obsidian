@@ -27,7 +27,7 @@ git push origin 0.2.1
 The workflow verifies that the tag matches `manifest.json` and creates a draft
 release with `main.js`, `manifest.json` and `styles.css`. Review the draft and
 publish it only after the real-Vault check is complete. The first community
-release additionally requires a human pull request to Obsidian's
-`obsidian-releases` directory; making this repository public alone does not add
-it to the Community Plugins catalogue. See `../OBSIDIAN_COMMUNITY_LISTING.md`
-for the product copy and required asset summary.
+release additionally requires a human submission through Obsidian's Community
+directory; making this repository public alone does not add it to the Community
+Plugins catalogue. See `../OBSIDIAN_COMMUNITY_LISTING.md` for the product copy
+and required asset summary.

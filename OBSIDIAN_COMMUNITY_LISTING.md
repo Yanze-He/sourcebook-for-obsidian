@@ -70,7 +70,10 @@ The root repository already contains the community-facing files:
 
 For release `0.2.1`, create the exact Git tag `0.2.1`. The workflow builds and
 attaches `main.js`, `manifest.json`, and `styles.css` individually to a draft
-GitHub Release. Do not upload a ZIP as the community plugin asset.
+GitHub Release. Do not upload a ZIP as the community plugin asset. After
+publishing the release, submit the public repository URL through the Obsidian
+Community directory; the directory checks the default-branch manifest and the
+matching GitHub Release.
 
 ## Reviewer notes
 
