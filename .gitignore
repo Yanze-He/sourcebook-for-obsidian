@@ -1,0 +1,7 @@
+node_modules/
+.build/
+artifacts/
+main.js
+*.zip
+.DS_Store
+.test-vault/
