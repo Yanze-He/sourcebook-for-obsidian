@@ -15,7 +15,7 @@ Before any public release:
   manifest and README; released builds must expose the standalone runtime assets.
 - Obtain explicit approval before creating a public Release or submission.
 
-When ready:
+When ready to prepare a release from the tested `main` commit:
 
 ```bash
 npm run check
@@ -25,5 +25,9 @@ git push origin 0.2.1
 ```
 
 The workflow verifies that the tag matches `manifest.json` and creates a draft
-release with `main.js`, `manifest.json` and `styles.css`. Publication and a
-community-directory pull request remain separate human decisions.
+release with `main.js`, `manifest.json` and `styles.css`. Review the draft and
+publish it only after the real-Vault check is complete. The first community
+release additionally requires a human pull request to Obsidian's
+`obsidian-releases` directory; making this repository public alone does not add
+it to the Community Plugins catalogue. See `../OBSIDIAN_COMMUNITY_LISTING.md`
+for the product copy and required asset summary.
