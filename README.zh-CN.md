@@ -8,7 +8,7 @@ Sourcebook 都能把零散的项目素材沉淀成可复用的 **Book**。已有
 同一个瀑布流素材库中统一管理；保留来源、写下创作备注，并在需要时把恰当的上下文
 带给 AI。
 
-[官网与使用说明](https://sourcebook.online/obsidian-plugin/) · [English README](README.md) · [参与贡献](CONTRIBUTING.md) · [反馈问题](https://github.com/Yanze-He/sourcebook-for-obsidian/issues)
+[官网与使用说明](https://sourcebook.online/obsidian-plugin/?utm_source=github_obsidian_readme&utm_medium=referral&utm_campaign=picker_install) · [English README](README.md) · [参与贡献](CONTRIBUTING.md) · [反馈问题](https://github.com/Yanze-He/sourcebook-for-obsidian/issues)
 
 ## 为创作项目而生
 
@@ -41,7 +41,7 @@ Sourcebook 不会自动发送任何内容：你始终决定要打包什么，以
 
 ## 可选：用 Sourcebook Picker 从浏览器扩充素材库
 
-[Sourcebook Picker](https://sourcebook.online/obsidian-plugin/) 是一个 Chrome / Edge
+[Sourcebook Picker](https://sourcebook.online/obsidian-plugin/?utm_source=github_obsidian_readme&utm_medium=referral&utm_campaign=picker_install) 是一个 Chrome / Edge
 浏览器插件，适合在资源流网页或 AI 对话界面中快速扩充 Book。通过本机配对码将它
 连接到当前 Vault 中的 Sourcebook 后，即可边浏览边采集。
 

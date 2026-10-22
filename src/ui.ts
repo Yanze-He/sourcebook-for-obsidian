@@ -116,7 +116,7 @@ export class PickerPairingModal extends Modal {
         const status = el(body, 'p', '', 'sb-pairing-status');
         const footer = el(this.contentEl, 'footer', '', 'sb-modal-footer sb-pairing-footer');
         action(footer, label(this.language, '下载 Picker', 'Download Picker'), async () => {
-            const opened = window.open('https://chromewebstore.google.com/detail/picker-for-agent/pkglhngkfkjblabnhgcioindjgffgfpf?hl=en-US&utm_source=ext_sidebar', '_blank', 'noopener,noreferrer');
+            const opened = window.open('https://chromewebstore.google.com/detail/sourcebook-picker/pkglhngkfkjblabnhgcioindjgffgfpf?hl=en-US&utm_source=sourcebook_obsidian&utm_medium=in_product&utm_campaign=picker_install&utm_content=pairing_modal', '_blank', 'noopener,noreferrer');
             if (!opened) throw new Error(label(this.language, '无法打开 Chrome Web Store。', 'Could not open the Chrome Web Store.'));
         }, 'sb-pairing-download');
         action(footer, label(this.language, '复制配对码', 'Copy code'), async () => { await navigator.clipboard.writeText(this.code); new Notice(label(this.language, '配对码已复制。', 'Pairing code copied.')); }, 'mod-cta');

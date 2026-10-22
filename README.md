@@ -11,7 +11,7 @@ files, images, video, audio, PDFs, web pages, links, posts, short text, and
 supported AI conversations. Keep where it came from, add the creative note that
 explains why it matters, and bring exactly the right context to your next task.
 
-[Website](https://sourcebook.online/obsidian-plugin/) · [Chinese README](README.zh-CN.md) · [Contributing](CONTRIBUTING.md) · [Report an issue](https://github.com/Yanze-He/sourcebook-for-obsidian/issues)
+[Website](https://sourcebook.online/obsidian-plugin/?utm_source=github_obsidian_readme&utm_medium=referral&utm_campaign=picker_install) · [Chinese README](README.zh-CN.md) · [Contributing](CONTRIBUTING.md) · [Report an issue](https://github.com/Yanze-He/sourcebook-for-obsidian/issues)
 
 ## Built for creative projects
 
@@ -57,7 +57,7 @@ and where to use it.
 <img width="1672" height="718" alt="图片" src="https://github.com/user-attachments/assets/3a8aac2b-0afb-4891-b687-7e95fb2e731a" />
 
 
-[Sourcebook Picker](https://sourcebook.online/obsidian-plugin/) is a Chrome and
+[Sourcebook Picker](https://sourcebook.online/obsidian-plugin/?utm_source=github_obsidian_readme&utm_medium=referral&utm_campaign=picker_install) is a Chrome and
 Edge extension for quickly growing a Book from the web. Pair it with the
 Sourcebook plugin in your current Vault using a local pairing code, then capture
 material while you browse resource-heavy pages or AI chats.
