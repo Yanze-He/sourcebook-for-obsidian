@@ -1,42 +1,82 @@
 # Sourcebook for Obsidian
 
-**Keep the context behind your work close to the work itself.**
+**A local-first source and note system for creative work—built for designers,
+deck makers, video creators, and every creator working with AI.**
 
-Sourcebook is a local-first Obsidian plugin for collecting project materials
-into Books: existing Vault files, notes, short text, links, and optional browser
-captures. It helps you turn selected material into ordinary project notes and
-prepare deliberate context for the AI tool you choose.
+Sourcebook turns scattered project material into visual, reusable **Books**.
+Collect almost any kind of source in one masonry-style library: existing Vault
+files, images, video, audio, PDFs, web pages, links, posts, short text, and
+supported AI conversations. Keep where it came from, add the creative note that
+explains why it matters, and bring exactly the right context to your next task.
 
 [Website](https://sourcebook.online/obsidian-plugin/) · [Chinese README](README.zh-CN.md) · [Contributing](CONTRIBUTING.md) · [Report an issue](https://github.com/Yanze-He/sourcebook-for-obsidian/issues)
 
-## Why Sourcebook
+## Built for creative projects
 
-- **Keep one original copy.** Existing Vault files are collected directly; the
-  plugin does not make wrapper Markdown duplicates.
-- **Preserve native backlinks.** Adding a file to a project note writes a normal
-  Obsidian link or embed, so the original file can find the note that uses it.
-- **Keep project notes yours.** Text and Book notes are inserted as ordinary,
-  editable Markdown—not a hidden proprietary block.
-- **Collect context deliberately.** Choose the files and links you want before
-  handing material to an AI. Sourcebook never sends material automatically.
-- **Stay local.** No account, cloud sync, analytics, built-in AI, OCR, or
-  transcription.
+- **See a project, not a folder tree.** A visual masonry view brings references,
+  working files, links, posts, and conversations together. Create as many Books
+  as you need—for a product, a presentation, a film, a client, or an idea.
+- **Keep the source attached.** Cards retain source URLs and available metadata.
+  Jump back to the original page when you need to check, cite, or reuse it.
+- **Write the reason, not just the filename.** Add a Book-specific note to each
+  material: the creative intent, decision, caveat, or instruction that future
+  you (and an AI) needs to understand.
+- **Work with nearly every common format.** Keep files alongside images, video,
+  audio, PDFs, links, posts, web captures, and AI-chat material instead of
+  maintaining separate collections for each.
+
+## A library that belongs in your Vault
+
+Sourcebook is not a separate workspace or a file silo. Add the files that
+already live in your Vault, then manage them beside new links and captured web
+material. When you add a material to any note, Sourcebook writes a normal
+Obsidian link or embed. Your original resource keeps its native backlinks, and
+your project note stays ordinary, editable Markdown.
+
+Existing Vault files keep one authoritative copy; removing an item from a Book
+never deletes its source file.
+
+## Give AI the context it actually needs
+
+Select multiple materials and turn them into a ready-to-use AI context. The
+selection can be copied to the clipboard with the relevant files, links, and
+your material notes, so the reasoning behind the selection travels with it.
+
+This makes it much faster to start work in any product that accepts files and
+prompts—such as Codex, Claude Code, Figma, or Lovable—without repeatedly
+collecting references, choosing attachments, and rewriting the same brief.
+Sourcebook never sends material automatically: you choose exactly what to pack
+and where to use it.
+
+## Optional: collect from the browser with Sourcebook Picker
+
+[Sourcebook Picker](https://sourcebook.online/obsidian-plugin/) is a Chrome and
+Edge extension for quickly growing a Book from the web. Pair it with the
+Sourcebook plugin in your current Vault using a local pairing code, then capture
+material while you browse resource-heavy pages or AI chats.
+
+Picker supports images, video, audio, web pages, links, selected text, posts,
+and supported AI conversations. Current chat support includes ChatGPT, Gemini,
+DeepSeek, and Grok; current post support includes X and Xiaohongshu. Captures
+retain their original source and available media information.
 
 ## How it works
 
-1. Create a **Book** for a project, question, or client.
-2. Add existing Vault files, short text, or links. Each Book can keep its own
-   notes about why a material matters.
-3. Turn selected material into a project note. Files remain native links;
-   written context remains editable prose.
-4. When you need help from an AI, select only the material you want to use.
+1. Create a **Book** for a project, question, client, or creative direction.
+2. Add existing Vault files, short text, links, or browser captures. Add a note
+   explaining how each material should inform the work.
+3. Add selected material to a project note whenever you need it. Files remain
+   native links or embeds; text and notes remain editable prose.
+4. Select only the material needed for the next AI task, then copy or hand off
+   the prepared context.
 
-### Optional: collect from the browser
+## What we are exploring next
 
-Pair [Sourcebook Picker](https://sourcebook.online/obsidian-plugin/) with the
-Sourcebook plugin in your current Vault using a local pairing code. Picker can
-save selected web material, pages, links, media references, posts, and supported
-AI conversations into the Book you choose. The connection stays on your device.
+We are exploring direct local-agent workflows for tools such as Codex, Claude
+Code, and Grokbot. The goal is to let an agent help organize materials and to
+save approved outputs, project progress, and collaboration results back into
+Sourcebook. This is a direction, not a currently released capability: users
+will remain in control of what an agent can read or save.
 
 ## Installation
 
@@ -75,7 +115,7 @@ pairing.
 
 ## Contributing
 
-Bug reports, workflow examples, documentation fixes, accessibility improvements,
+Bug reports, creative workflows, documentation fixes, accessibility improvements,
 and focused pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md)
 and [the architecture guide](docs/ARCHITECTURE.md).
 
