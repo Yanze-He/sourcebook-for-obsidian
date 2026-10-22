@@ -1,4 +1,4 @@
-# Sourcebook 0.2.1
+# Sourcebook 0.2.2
 
 Sourcebook is a local-first material and note workspace for creative projects.
 It keeps existing Vault files, media, web captures, links, posts, short text,
@@ -6,6 +6,8 @@ and supported AI conversations together in project-based Books.
 
 ## Highlights
 
+- Resolves Community Plugins review feedback around rendering, clipboard
+  behavior, deletion, and local Picker request validation.
 - Create visual Books for a project, client, film, deck, or creative direction.
 - Preserve source links and add Book-specific context for every material.
 - Add materials to normal Obsidian notes using native links and embeds.

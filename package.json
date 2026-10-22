@@ -1,6 +1,6 @@
 {
   "name": "sourcebook-obsidian",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": true,
   "description": "Local-first material Books with live Obsidian references and explicit AI handoff snapshots.",
   "license": "MIT",
