@@ -3,6 +3,8 @@
 **A local-first source and note system for creative work—built for designers,
 deck makers, video creators, and every creator working with AI.**
 
+https://github.com/user-attachments/assets/bf838780-e9f7-406f-9722-e3411ea23e78
+
 Sourcebook turns scattered project material into visual, reusable **Books**.
 Collect almost any kind of source in one masonry-style library: existing Vault
 files, images, video, audio, PDFs, web pages, links, posts, short text, and
@@ -38,6 +40,9 @@ never deletes its source file.
 
 ## Give AI the context it actually needs
 
+<img width="1280" height="800" alt="你的段落文字 (4)" src="https://github.com/user-attachments/assets/3153dcb0-ff89-4b2d-885e-63605a65db48" />
+
+
 Select multiple materials and turn them into a ready-to-use AI context. The
 selection can be copied to the clipboard with the relevant files, links, and
 your material notes, so the reasoning behind the selection travels with it.
@@ -49,6 +54,8 @@ Sourcebook never sends material automatically: you choose exactly what to pack
 and where to use it.
 
 ## Optional: collect from the browser with Sourcebook Picker
+<img width="1672" height="718" alt="图片" src="https://github.com/user-attachments/assets/3a8aac2b-0afb-4891-b687-7e95fb2e731a" />
+
 
 [Sourcebook Picker](https://sourcebook.online/obsidian-plugin/) is a Chrome and
 Edge extension for quickly growing a Book from the web. Pair it with the
