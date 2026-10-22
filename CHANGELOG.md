@@ -1,13 +1,14 @@
 # Changelog
 
-## 0.2.1 — Unreleased
+All notable changes to Sourcebook for Obsidian are documented here.
 
-- Prepare the repository and release workflow for the first Obsidian community
-  plugin release.
-- Organize original Vault files, text, links and Picker captures into Books.
-- Create native project-note references and provide local Picker pairing.
-- Improve detail-save feedback, media metadata and accessible responsive views.
+## 0.2.1
 
-This version is not published yet. Complete the real-Vault checks in
-`TESTING.md` before creating a release tag or submitting to the community
-directory.
+- Organize original Vault files, notes, text, links, and Picker captures into
+  project Books.
+- Write native project-note links and embeds for files, preserving backlinks to
+  their original source.
+- Keep short text and Book notes as ordinary editable Markdown in project notes.
+- Pair locally with Sourcebook Picker for browser captures.
+- Improve material details, media metadata, save feedback, and narrow-panel
+  accessibility.

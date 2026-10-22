@@ -1,71 +1,75 @@
-# Sourcebook — Obsidian 0.2.1 开发测试版
+# Sourcebook for Obsidian
 
-这是一次数据模型重构后的独立插件预览，已为首次公开发布准备好仓库文件，
-但尚未发布。请先在空的测试 Vault 中验证。
+**把支撑项目工作的素材，留在项目身边。**
 
-## 这版解决什么
+Sourcebook 是一个本地优先的 Obsidian 插件。它把已有 Vault 文件、笔记、短
+文字、链接和可选的浏览器采集内容组织成 Book，帮助你写出可编辑的项目笔记，并
+在需要时明确选择要交给 AI 的上下文。
 
-- 已有 Vault 文件直接成为素材，不再创建 `Sources/*.md` 包装文档。
-- Book 的收录关系、排序和「本册备注」直接保存在 Book Markdown 正文。
-- 短文本和普通链接直接存在 Book；文字可直接编辑并作为普通文本加入项目笔记。
-- Picker 会保留采集素材的原始类型、缩略图、来源链接、标题和可用时间信息。
-- 「添加到笔记」为文件写入原生链接，并将文字和本册备注写成可编辑的普通 Markdown；链接型素材对应的 Markdown 只用于跳转，不会在发送给 AI 时被读取或作为附件。
-- 「发送给 AI」默认使用原始文件，不在 Vault 中制造副本。
-- 移出 Book 不会删除原文件。
-- 外部导入的完全相同文件会按内容哈希复用同一份 Asset。
+[官网与使用说明](https://sourcebook.online/obsidian-plugin/) · [English README](README.md) · [参与贡献](CONTRIBUTING.md) · [反馈问题](https://github.com/Yanze-He/sourcebook-for-obsidian/issues)
 
-## 文件结构
+## 为什么使用 Sourcebook
+
+- **只保留一份原文件。** 已有 Vault 文件直接收录，不生成包装用的重复 Markdown。
+- **保留 Obsidian 原生反向链接。** 文件加入项目笔记时会写成普通链接或嵌入，
+  因此可以从原文件找到使用它的笔记。
+- **项目笔记始终由你掌控。** 文字和本册备注会写成普通、可编辑的 Markdown，
+  而不是隐藏的专有区块。
+- **明确选择 AI 上下文。** 交给 AI 前由你选择需要的文件和链接；插件不会自动
+  发送任何素材。
+- **本地优先。** 不需要账号，没有云同步、分析、内置 AI、OCR 或转写服务。
+
+## 使用方式
+
+1. 为项目、问题或客户新建一个 **Book**。
+2. 加入已有 Vault 文件、短文字或链接，并为每项素材写下本册备注。
+3. 选中素材并转成项目笔记：文件保留原生链接，文字和上下文保留为可编辑正文。
+4. 需要 AI 协助时，只选择这次任务真正需要的素材。
+
+### 可选：从浏览器采集
+
+通过本机配对码将 [Sourcebook Picker](https://sourcebook.online/obsidian-plugin/)
+连接到当前 Vault 中的 Sourcebook。Picker 可将选中的网页内容、页面、链接、
+媒体来源、帖子和支持的 AI 对话保存到指定 Book；整个连接只发生在你的设备上。
+
+## 安装
+
+### 从社区插件安装
+
+Sourcebook 上架 Obsidian Community Plugins 后：
+
+1. 打开 **设置 → 社区插件 → 浏览**。
+2. 搜索 **Sourcebook**。
+3. 安装并启用，然后从 Ribbon 或命令面板打开 Sourcebook。
+
+### 手动安装
+
+使用预发布版本或本地构建时，下载对应 GitHub Release 的 `main.js`、
+`manifest.json` 和 `styles.css`，放入：
 
 ```text
-Sourcebook/
-├── Books/       素材册与本册备注
-├── Project Notes/ 项目笔记
-├── Assets/      从 Vault 外部导入的原文件
-└── _data/       可选来源和导入档案
+<你的 Vault>/.obsidian/plugins/sourcebook/
 ```
 
-## 本地安装
+然后在 **设置 → 社区插件** 中启用。测试预发布版本前，请先备份重要 Vault。
 
-将测试包中的 `sourcebook` 文件夹复制到：
+## 要求
 
-```text
-测试 Vault/.obsidian/plugins/sourcebook/
-```
+- Obsidian 1.8.0 或更高版本。
+- 仅支持桌面端 Obsidian，暂不支持移动端。
+- 只有使用可选的 Sourcebook Picker 时才需要 Chromium 浏览器。
 
-在设置 → 社区插件中启用 Sourcebook。建议先删除旧测试 Vault 中的
-`Sourcebook/` 文件夹；本版会识别 v1 数据，但不会迁移或改写。
+## 隐私
 
-## 推荐验证流程
+Sourcebook 只在当前打开的 Vault 中工作：不会扫描无关笔记正文，不会上传 Vault
+内容，也不会连接外部服务。可选的 Picker 接收端仅在明确配对后，通过本机连接
+接收请求。
 
-1. 新建 Book，加入一张已有 Vault 图片、一篇已有笔记、一段文字和一个链接。
-2. 确认没有生成 `Sourcebook/Sources/` 包装文档。
-3. 修改卡片的「本册备注」，再打开 Book Markdown，确认是同一份内容。
-4. 将同一图片加入另一个 Book，填写不同备注，确认互不覆盖。
-5. 选择素材 → 转成笔记；确认文件能通过反向链接找到该笔记，文字和备注可直接编辑。
-6. 点击「发送给 AI」后直接选择素材；确认二进制文件会被收集，链接型素材仍属于「链接」且不会把辅助 Markdown 作为附件或提示词正文。
-7. 使用浏览器 Picker 保存文字、网页、帖子和媒体；确认它们的类型、缩略图、来源与详情内容正确。
-8. 移出素材，检查项目笔记引用仍可显示，原文件保持不变。
+## 参与贡献
 
-## 当前限制
+欢迎提交 Bug 反馈、使用场景、文档修正、无障碍改进和聚焦的 Pull Request。开始前
+请阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 与[架构说明](docs/ARCHITECTURE.md)。
 
-- 没有 v1 数据迁移；本地测试请重置 `Sourcebook/`。
-- 原生多文件剪贴板仍为实验能力，默认关闭。
-- 没有 MCP、内置 AI、OCR、音视频转写或云端同步；Picker 与插件之间只通过本机配对连接。
-- Book 管理区域采用固定可读格式；如果手工破坏结构，插件会拒绝覆盖。
-- 真实 Obsidian、macOS/Windows 剪贴板仍需实机验收。
+## 开源协议
 
-## 开发检查
-
-```bash
-npm install
-npm run check
-npm run package
-```
-
-离线环境可运行：
-
-```bash
-npm run check:offline
-npm test
-npm run package
-```
+MIT，见 [LICENSE](LICENSE) 与[第三方声明](THIRD_PARTY_NOTICES.md)。

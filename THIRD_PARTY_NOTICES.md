@@ -1,20 +1,26 @@
-# Provenance
+# Third-party notices
 
-The product and Pack behavior follow Sourcebook for Agents by its contributors.
-Native file-list clipboard scripts in `src/clipboard.ts` are adapted from the
-macOS AppKit/JXA and Windows file-list strategy in
-`Yanze-He/sourcebook-for-agents/apps/service-go/desktop_actions.go`, reviewed at
-commit `c36aa1b87b25f572ef8bd1531af2e3b26accf8b8` (MIT). Its copyright and license
-are preserved in LICENSE. No Go binary or Desktop database code is included.
+- **Obsidian API.** Sourcebook uses Obsidian's public plugin API. Obsidian and
+  its API remain subject to their respective licenses and terms.
+- **Lucide icons.** Some icon path geometry is adapted from Lucide, licensed
+  under the ISC License.
+- **Native clipboard approach.** The optional macOS and Windows file-list
+  clipboard implementation is adapted from the MIT-licensed
+  [Sourcebook for Agents](https://github.com/Yanze-He/sourcebook-for-agents)
+  project. No Desktop binary or database code is included here.
 
-The rest of this implementation was written for this independent plugin. It is
-not a wholesale extraction of the existing Sources React screen, and does not
-claim the previous prompt-template editor has been fully migrated.
+ISC License (Lucide)
 
-Obsidian provides the runtime API and retains its own license. TypeScript,
-@types/node and the obsidian type package are development dependencies, not
-bundled runtime code. Official API reference: https://docs.obsidian.md/
+Copyright (c) Lucide Contributors
 
-Button icons reuse path geometry from lucide-react v1.37.0, as used by the
-local Sourcebook Desktop project. Lucide is licensed under the ISC license;
-see its bundled LICENSE in that project's dependency tree.
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above copyright
+notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.

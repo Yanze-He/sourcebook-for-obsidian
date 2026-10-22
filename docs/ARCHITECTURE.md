@@ -1,71 +1,56 @@
-# Architecture / 技术边界
+# Architecture
 
-Sourcebook v2 keeps one authoritative copy of content:
+Sourcebook is designed around one rule: existing project material should retain
+one authoritative copy in the Vault.
 
-- Existing Vault files are materials directly; no wrapper Source Markdown is created.
-- Short text and simple links live inside readable Book entries.
-- Book membership, order and Book-specific notes live in the Book Markdown body.
-- Project notes use native Obsidian links for files and ordinary Markdown for
-  text and Book context. This deliberately makes inserted context a user-owned
-  snapshot while preserving native file backlinks.
-- Quick AI handoff uses original files.
+## Data model
+
+- Existing Vault files are Book materials directly; Sourcebook does not create
+  wrapper Markdown for them.
+- Short text and simple links live in readable Book entries.
+- Book membership, ordering, and Book-specific notes live in the Book Markdown
+  body.
+- Project notes use native Obsidian links or embeds for files, and ordinary
+  Markdown for text and Book context. This preserves file backlinks while making
+  inserted prose user-owned and freely editable.
+- Optional Picker captures retain their source URL, title, timestamp, and
+  available media metadata.
 
 ## Modules
 
-- `core.ts`: schema-v2 Book blocks, validation, IDs, registry and pure data rules.
-- `store.ts`: Book/material operations over the minimal `VaultIO` port.
-- `host.ts`: the sole adapter to Obsidian Vault/FileManager/workspace APIs.
-- `pack.ts`: quick-handoff plan and prompt construction.
-- `clipboard.ts`: optional native original-file clipboard; off by default.
-- `view.ts`, `ui.ts`: native ItemView and Modal UI.
-- `main.ts`: plugin lifecycle, rename tracking and settings.
+- `core.ts`: Book blocks, validation, IDs, registry, and pure data rules.
+- `store.ts`: Book and material operations over the `VaultIO` boundary.
+- `host.ts`: adapter for Obsidian Vault, FileManager, and workspace APIs.
+- `picker-receiver.ts`: local pairing and capture intake for Sourcebook Picker.
+- `pack.ts`: explicit AI-handoff selection and prompt construction.
+- `clipboard.ts`: optional native original-file clipboard support.
+- `view.ts`, `ui.ts`: ItemView and modal user interfaces.
+- `main.ts`: plugin lifecycle, rename tracking, commands, and settings.
 
 ## Vault layout
 
 ```text
 Sourcebook/
-  Books/       readable Book Markdown and entry blocks
-  Project Notes/ generated project-note summaries
-  Assets/      files explicitly imported from outside the Vault
-  _data/       optional source/import metadata only
+  Books/          readable Book Markdown
+  Project Notes/  project notes created from selected material
+  Assets/         files explicitly imported from outside the Vault
+  _data/          optional provenance and import metadata
 ```
 
-`Sourcebook/_data/library.json` never stores Book membership, Book notes, titles,
-content bodies or file sizes. It only stores information an original binary file
-cannot express, such as import hash or future Picker provenance.
+`Sourcebook/_data/library.json` stores optional provenance and import details;
+the Book Markdown remains the source of truth for membership, ordering, content,
+and Book notes.
 
-## Book entry contract
+## Safety boundaries
 
-Each managed Book region contains readable callout blocks with a stable block ID.
-The file/link/text content and Book note are the authoritative record. The card UI
-reads and writes the same block; there is no separate hidden `entries` array.
-Unknown text inside a managed region causes writes to fail rather than overwrite it.
-Text outside managed regions is preserved.
+- File writes are serialized and use Obsidian's Vault APIs.
+- Removing a material unlinks it from a Book without deleting its original file.
+- Sourcebook does not recursively scan unrelated note bodies.
+- The optional Picker receiver is local-only and requires explicit pairing.
+- AI handoff is explicit: users select the material to include. Link helper
+  Markdown remains navigational and is not attached as an original file.
 
-## Project-note insertion and AI handoff
+## Working on the plugin
 
-No hidden Book marker is written into project notes. A file entry becomes a native
-wiki link (or an embed for previewable media); a text entry and its Book context
-become regular Markdown. This means later Book-note edits do not rewrite project
-prose. When a project note is handed to AI, direct native links to active,
-non-Markdown Sourcebook files are collected as attachments. The note's own prose
-is the prompt context. Links to `Sourcebook/Assets/*.md` stay navigational and
-their Markdown body is not read or attached. Legacy embedded Book blocks remain
-readable for compatibility.
-
-## Safety and recovery
-
-Writes are serialized within one plugin instance and use `Vault.process` for Book
-body changes. Removing a material moves its entry to the Book's Removed region,
-keeping its block ID and note. Permanent entry deletion never deletes the original
-file. The plugin does not recursively scan unrelated note bodies.
-
-Schema v1 test data is intentionally not migrated in 0.2.0. It is detected and
-left untouched. Local testers should back up needed originals and start with a
-fresh `Sourcebook/` folder.
-
-## Out of scope
-
-No Sourcebook Desktop dependency, MCP, built-in AI, Picker receiver, OCR, video
-transcription, cloud service or telemetry. Picker remains a later milestone and
-must reuse the existing browser extension.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for setup, checks, and pull-request
+expectations.
