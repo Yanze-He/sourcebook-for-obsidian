@@ -1,7 +1,7 @@
 export type Primitive = string | number | boolean | null | undefined;
 export type Child = Primitive | VNode | Node | Child[];
 export type Component<P = Record<string, unknown>> = (props: P & { children?: Child }) => Child;
-export type ElementType = string | Component<any>;
+export type ElementType = string | Component<Record<string, unknown>>;
 export interface VNode { type: ElementType; props: Record<string, unknown>; children: Child[]; }
 
 export function h(type: ElementType, props: Record<string, unknown> | null, ...children: Child[]): VNode {
@@ -29,10 +29,6 @@ function setProp(element: Element, key: string, value: unknown): void {
         Object.assign((element as HTMLElement).style, value);
         return;
     }
-    if (key === 'dangerouslySetInnerHTML' && value && typeof value === 'object' && '__html' in value) {
-        (element as HTMLElement).innerHTML = String((value as { __html: unknown }).__html);
-        return;
-    }
     if (key === 'ref' && typeof value === 'function') { (value as (node: Element) => void)(element); return; }
     if (/^on[A-Z]/.test(key) && typeof value === 'function') {
         const event = key.slice(2).toLowerCase();
@@ -53,36 +49,6 @@ function setProp(element: Element, key: string, value: unknown): void {
 }
 
 const SVG_TAGS = new Set(['svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'g', 'defs', 'linearGradient', 'stop', 'ellipse']);
-
-function nodeFor(child: Child, documentRef: Document, svg = false): Node | undefined {
-    if (child === null || child === undefined || child === false || child === true) return undefined;
-    if (child instanceof Node) return child;
-    if (typeof child === 'string' || typeof child === 'number') return documentRef.createTextNode(String(child));
-    if (Array.isArray(child)) {
-        const fragment = documentRef.createDocumentFragment();
-        for (const nested of flatten(child)) {
-            const node = nodeFor(nested, documentRef, svg);
-            if (node) fragment.append(node);
-        }
-        return fragment;
-    }
-    if (typeof child.type === 'function') {
-        return nodeFor(child.type({ ...child.props, children: child.children }), documentRef, svg);
-    }
-    const nextSvg = svg || SVG_TAGS.has(child.type);
-    const element = nextSvg
-        ? documentRef.createElementNS('http://www.w3.org/2000/svg', child.type)
-        : documentRef.createElement(child.type);
-    for (const [key, value] of Object.entries(child.props)) setProp(element, key, value);
-    if (!(child.props.dangerouslySetInnerHTML && typeof child.props.dangerouslySetInnerHTML === 'object')) {
-        for (const nested of flatten(child.children)) {
-            const node = nodeFor(nested, documentRef, nextSvg);
-            if (node) element.append(node);
-        }
-    }
-    if (child.props.autoFocus === true) queueMicrotask(() => (element as HTMLElement).focus?.());
-    return element;
-}
 
 export function render(child: Child, container: HTMLElement): void {
     reconcileChildren(container, normalized(child), container.ownerDocument);
@@ -166,10 +132,10 @@ function patchNode(parent: Node, oldNode: Node | undefined, value: Renderable, d
         }
     } else if (value instanceof Node) {
         if (oldNode === value) return oldNode;
-    } else if (oldNode instanceof Element && oldNode.localName === value.type) {
+    } else if (oldNode.nodeType === 1 && (oldNode as Element).localName === value.type) {
         const elementSvg = svg || SVG_TAGS.has(value.type);
         const previous = (oldNode as Element & { __jsxProps?: Record<string, unknown> }).__jsxProps || {};
-        patchProps(oldNode, previous, value.props);
+        patchProps(oldNode as Element, previous, value.props);
         (oldNode as Element & { __jsxProps?: Record<string, unknown> }).__jsxProps = value.props;
         reconcileChildren(oldNode, normalized(value.children), documentRef, elementSvg);
         return oldNode;
@@ -187,8 +153,8 @@ function reconcileChildren(parent: Node, next: Renderable[], documentRef: Docume
 
 declare global {
     namespace JSX {
-        interface IntrinsicElements { [name: string]: any; }
-        interface Element extends VNode { }
-        interface ElementChildrenAttribute { children: {}; }
+        interface IntrinsicElements { [name: string]: unknown; }
+        interface Element extends VNode {}
+        interface ElementChildrenAttribute { children: Record<string, never>; }
     }
 }

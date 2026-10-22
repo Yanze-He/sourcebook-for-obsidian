@@ -136,7 +136,7 @@ export interface VaultIO {
 }
 
 export function fail(message: string): never { throw new Error(message); }
-export function id(): string { return globalThis.crypto.randomUUID(); }
+export function id(): string { return crypto.randomUUID(); }
 export function entryId(): string { return `sb-entry-${id().replace(/-/g, '').slice(-16)}`; }
 export function message(error: unknown): string { return error instanceof Error ? error.message : String(error); }
 
@@ -148,13 +148,14 @@ export function plainTitle(value: string): string {
 }
 
 export function safeName(value: string): string {
-    let s = value.normalize('NFC').replace(/[<>:"/\\|?*\x00-\x1f\[\]#^]/g, '-').replace(/[. ]+$/g, '').replace(/^[. ]+/g, '').slice(0, 100);
+    const forbidden = '<>:"/\\|?*[]#^';
+    let s = [...value.normalize('NFC')].map(char => char.codePointAt(0)! <= 31 || forbidden.includes(char) ? '-' : char).join('').replace(/[. ]+$/g, '').replace(/^[. ]+/g, '').slice(0, 100);
     if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s)) s = `_${s}`;
     return s || 'untitled';
 }
 
 export function safeRelative(path: string): string {
-    if (!path || path.startsWith('/') || path.includes('\\') || /[\x00-\x1f]/.test(path) || /^[A-Za-z]:/.test(path)) fail('Unsafe Vault path');
+    if (!path || path.startsWith('/') || path.includes('\\') || [...path].some(char => char.codePointAt(0)! <= 31) || /^[A-Za-z]:/.test(path)) fail('Unsafe Vault path');
     if (path.split('/').some(p => !p || p === '.' || p === '..' || p.startsWith('.'))) fail('Unsafe Vault path');
     return path;
 }

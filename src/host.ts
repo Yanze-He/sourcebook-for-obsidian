@@ -29,7 +29,7 @@ export class ObsidianVaultIO implements VaultIO {
     readBinary(path: string): Promise<ArrayBuffer> { return this.app.vault.readBinary(this.file(path)); }
     async process(path: string, change: (current: string) => string): Promise<void> { await this.app.vault.process(this.file(path), change); }
     async rename(path: string, newPath: string): Promise<void> { await this.app.fileManager.renameFile(this.file(path), safeRelative(newPath)); }
-    async remove(path: string): Promise<void> { await this.app.vault.delete(this.file(path)); }
+    async remove(path: string): Promise<void> { await this.app.fileManager.trashFile(this.file(path)); }
     updateMeta(path: string, change: (meta: Frontmatter) => void): Promise<void> { return this.app.fileManager.processFrontMatter(this.file(path), change); }
     parse(text: string): Parsed {
         const normalized = text.replace(/^\uFEFF/, '');
@@ -56,7 +56,7 @@ export class ObsidianVaultIO implements VaultIO {
     }
     private electronShell(): { openPath(path: string): Promise<string>; showItemInFolder(path: string): void } | undefined {
         try {
-            const candidate = (require('electron') as { shell?: unknown }).shell;
+            const candidate = (window as Window & { require?: (module: string) => { shell?: unknown } }).require?.('electron')?.shell;
             return candidate && typeof (candidate as { openPath?: unknown }).openPath === 'function'
                 ? candidate as { openPath(path: string): Promise<string>; showItemInFolder(path: string): void }
                 : undefined;

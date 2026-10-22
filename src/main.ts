@@ -19,7 +19,7 @@ export default class SourcebookPlugin extends Plugin {
     store!: SourcebookStore;
     io!: ObsidianVaultIO;
     private listeners = new Set<() => void>();
-    private timer: ReturnType<typeof setTimeout> | undefined;
+    private timer: number | undefined;
     private pickerReceiver!: PickerReceiver;
 
     async onload(): Promise<void> {
@@ -43,8 +43,8 @@ export default class SourcebookPlugin extends Plugin {
 
         const changed = () => {
             if (!this.listeners.size) return;
-            if (this.timer) clearTimeout(this.timer);
-            this.timer = setTimeout(() => {
+            if (this.timer) window.clearTimeout(this.timer);
+            this.timer = window.setTimeout(() => {
                 this.timer = undefined;
                 this.listeners.forEach(listener => listener());
             }, 400);
@@ -59,7 +59,7 @@ export default class SourcebookPlugin extends Plugin {
             void this.store.handleRename(oldPath, file.path).catch(error => new Notice(String(error))).finally(changed);
         }));
         this.register(() => {
-            if (this.timer) clearTimeout(this.timer);
+            if (this.timer) window.clearTimeout(this.timer);
             this.listeners.clear();
         });
     }
@@ -87,7 +87,7 @@ export default class SourcebookPlugin extends Plugin {
 
     onunload(): void {
         this.pickerReceiver?.stop();
-        if (this.timer) clearTimeout(this.timer);
+        if (this.timer) window.clearTimeout(this.timer);
         this.listeners.clear();
     }
 }

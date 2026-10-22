@@ -6,6 +6,8 @@ import { type Book, type DocumentLanguage, type Entry, type PickerMetadata, safe
 import { SourcebookStore } from './store';
 
 const PORT = 27124;
+const MAX_REQUEST_BYTES = 36 * 1024 * 1024;
+const PICKER_MODALITIES = new Set<PickerPayload['modality']>(['text', 'image', 'video', 'audio', 'link', 'post', 'conversation']);
 const PICKER_ORIGINS = new Set([
     'chrome-extension://cehohknopnehbkiokoffhfjepaieapan',
     'chrome-extension://pkglhngkfkjblabnhgcioindjgffgfpf'
@@ -41,6 +43,50 @@ type PickerPayload = {
     post?: { bodyText?: string; title?: string; author?: { displayName?: string; handle?: string }; publishedAt?: string; tags?: string[] };
     conversation?: { provider?: string; messages?: Array<{ role?: string; text?: string; markdown?: string }>; messageCount?: number };
 };
+
+function optionalText(value: unknown, field: string, maximum = 100_000): string | undefined {
+    if (value === undefined) return undefined;
+    if (typeof value !== 'string') throw new Error(`${field} must be text`);
+    if (value.length > maximum) throw new Error(`${field} is too large`);
+    return value;
+}
+
+function requiredText(value: unknown, field: string, maximum = 100_000): string {
+    const text = optionalText(value, field, maximum);
+    if (!text) throw new Error(`${field} is required`);
+    return text;
+}
+
+function optionalObject(value: unknown, field: string): Record<string, unknown> | undefined {
+    if (value === undefined) return undefined;
+    if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${field} must be an object`);
+    return value as Record<string, unknown>;
+}
+
+function pickerPayload(value: Record<string, unknown>): PickerPayload {
+    const modality = value.modality;
+    if (typeof modality !== 'string' || !PICKER_MODALITIES.has(modality as PickerPayload['modality'])) throw new Error('Unsupported Picker material type');
+    return {
+        modality: modality as PickerPayload['modality'],
+        sourceUrl: requiredText(value.sourceUrl, 'sourceUrl', 4_000),
+        sourceTitle: requiredText(value.sourceTitle, 'sourceTitle', 1_000),
+        sourceOrigin: requiredText(value.sourceOrigin, 'sourceOrigin', 4_000),
+        title: optionalText(value.title, 'title', 1_000),
+        contentText: optionalText(value.contentText, 'contentText', 300_000),
+        contentUrl: optionalText(value.contentUrl, 'contentUrl', 4_000),
+        contentBase64: optionalText(value.contentBase64, 'contentBase64', MAX_REQUEST_BYTES),
+        contentMimeType: optionalText(value.contentMimeType, 'contentMimeType', 200),
+        thumbnailUrl: optionalText(value.thumbnailUrl, 'thumbnailUrl', 4_000),
+        thumbnailBase64: optionalText(value.thumbnailBase64, 'thumbnailBase64', MAX_REQUEST_BYTES),
+        thumbnailMimeType: optionalText(value.thumbnailMimeType, 'thumbnailMimeType', 200),
+        faviconUrl: optionalText(value.faviconUrl, 'faviconUrl', 4_000),
+        pickedAt: optionalText(value.pickedAt, 'pickedAt', 100),
+        userNote: optionalText(value.userNote, 'userNote', 20_000),
+        pageMetadata: optionalObject(value.pageMetadata, 'pageMetadata') as PickerPayload['pageMetadata'],
+        post: optionalObject(value.post, 'post') as PickerPayload['post'],
+        conversation: optionalObject(value.conversation, 'conversation') as PickerPayload['conversation']
+    };
+}
 
 function titleFor(payload: PickerPayload): string {
     // A captured selection is its own material. Its text belongs in the editable
@@ -180,8 +226,16 @@ export class PickerReceiver {
         return Boolean(token && this.host.settings.pickerToken && token === this.host.settings.pickerToken);
     }
     private async body(request: IncomingMessage): Promise<Record<string, unknown>> {
+        const declaredLength = Number(request.headers['content-length'] || 0);
+        if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BYTES) throw new Error('Picker request is too large');
         const chunks: Buffer[] = [];
-        for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        let received = 0;
+        for await (const chunk of request) {
+            if (!Buffer.isBuffer(chunk)) throw new Error('Invalid Picker request body');
+            received += chunk.length;
+            if (received > MAX_REQUEST_BYTES) throw new Error('Picker request is too large');
+            chunks.push(chunk);
+        }
         if (!chunks.length) return {};
         const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'));
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('Invalid request body');
@@ -218,7 +272,7 @@ export class PickerReceiver {
         if (context?.trim()) await this.host.store.updateNote(book, entry.id, context.trim());
     }
     private async savePick(request: IncomingMessage, response: ServerResponse): Promise<void> {
-        const payload = await this.body(request) as PickerPayload;
+        const payload = pickerPayload(await this.body(request));
         const book = await this.findBook(payload.bookId);
         const metadata = { captureMethod: 'picker' as const, sourceUrl: payload.sourceUrl, sourceTitle: payload.sourceTitle, capturedAt: payload.pickedAt };
         const title = titleFor(payload);

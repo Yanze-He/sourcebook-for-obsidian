@@ -4,6 +4,8 @@ on:
     tags: ['[0-9]+.[0-9]+.[0-9]+']
 permissions:
   contents: write
+  attestations: write
+  id-token: write
 jobs:
   draft:
     runs-on: ubuntu-latest
@@ -18,8 +20,15 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: node scripts/check-release.cjs --tag "$RELEASE_TAG"
+      - name: Attest standalone release assets
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
       - name: Create draft with required standalone assets
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" main.js manifest.json styles.css --draft --title "Sourcebook $RELEASE_TAG" --notes "Draft build. Complete real Obsidian and platform testing before publication."
+        run: gh release create "$RELEASE_TAG" main.js manifest.json styles.css --draft --title "Sourcebook $RELEASE_TAG" --notes-file RELEASE_NOTES.md

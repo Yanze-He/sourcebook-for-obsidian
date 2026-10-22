@@ -140,7 +140,7 @@ export class SourcebookView extends ItemView {
     private handoffStatus = '';
     private handoffError = '';
     private toast?: Toast;
-    private toastTimer?: ReturnType<typeof setTimeout>;
+    private toastTimer?: number;
     private focusDetailNote = false;
     private detailNoteDrafts = new Map<string, string>();
     private detailTextDrafts = new Map<string, string>();
@@ -175,14 +175,14 @@ export class SourcebookView extends ItemView {
         this.refreshId++;
         this.unsubscribe?.();
         this.resizeObserver?.disconnect();
-        if (this.toastTimer) clearTimeout(this.toastTimer);
+        if (this.toastTimer) window.clearTimeout(this.toastTimer);
         this.contentEl.replaceChildren();
     }
 
     private notify(text: string, type: Toast['type'] = 'success'): void {
         this.toast = { text, type };
-        if (this.toastTimer) clearTimeout(this.toastTimer);
-        this.toastTimer = setTimeout(() => { this.toast = undefined; this.updateToast(); }, 3200);
+        if (this.toastTimer) window.clearTimeout(this.toastTimer);
+        this.toastTimer = window.setTimeout(() => { this.toast = undefined; this.updateToast(); }, 3200);
         this.updateToast();
     }
 

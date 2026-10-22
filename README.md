@@ -120,6 +120,22 @@ bodies, upload Vault content, or contact an external service. The optional
 Picker receiver accepts requests only on the local machine after explicit
 pairing.
 
+### Permissions and local operations
+
+- Sourcebook lists Vault files only when you open the **Add Vault file** picker;
+  it excludes Sourcebook-managed and already-managed files from that choice.
+- Clipboard access is used only after you press a copy action. Sourcebook never
+  reads your clipboard.
+- **Copy files for AI** is an explicit desktop-only action. On macOS and
+  Windows it uses the operating system's file-list clipboard so selected local
+  files can be pasted into an agent. It invokes only a fixed system clipboard
+  helper with validated paths—never a shell command constructed from web or
+  note content. Short text selected for that action is written as a temporary
+  `.txt` file under the operating system's temporary directory.
+- Deleting a managed Book or imported asset uses Obsidian's configured trash
+  behavior. Removing a material from a Book only unlinks it and preserves its
+  original Vault file.
+
 ## Contributing
 
 Bug reports, creative workflows, documentation fixes, accessibility improvements,

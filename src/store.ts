@@ -1,5 +1,5 @@
 import {
-    ACTIVE_START, ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Kind, Library,
+    ACTIVE_START, ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Library,
     MaterialMetadata, MAX_IMPORT_BYTES, newBookBody, PickerMetadata, plainTitle, parseRegistry, PROJECT_NOTES_DIR, REGISTRY_PATH, Resolved, ROOT, safeName,
     safeRelative, SCHEMA, serialize, SerialQueue, titleFromPath, VaultIO, webUrl, decodeBook, rewriteBookBody,
     kindFor, message, DocumentLanguage
@@ -197,7 +197,7 @@ export class SourcebookStore {
     }
 
     private async sha256(bytes: ArrayBuffer): Promise<string> {
-        const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+        const digest = await crypto.subtle.digest('SHA-256', bytes);
         return [...new Uint8Array(digest)].map(value => value.toString(16).padStart(2, '0')).join('');
     }
 
