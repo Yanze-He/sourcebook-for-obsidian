@@ -21,6 +21,7 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
         run: node scripts/check-release.cjs --tag "$RELEASE_TAG"
       - name: Attest standalone release assets
+        if: ${{ !github.event.repository.private }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: |

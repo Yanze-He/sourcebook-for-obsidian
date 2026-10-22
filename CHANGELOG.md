@@ -2,6 +2,12 @@
 
 All notable changes to Sourcebook for Obsidian are documented here.
 
+## 0.2.3
+
+- Let the release workflow create a testable draft while the repository remains
+  private. Asset provenance attestations are generated automatically once the
+  repository is public, where GitHub supports storing them.
+
 ## 0.2.2
 
 - Address Community Plugins review feedback: remove an unused HTML injection

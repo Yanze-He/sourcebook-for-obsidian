@@ -1,4 +1,4 @@
-# Sourcebook 0.2.2
+# Sourcebook 0.2.3
 
 Sourcebook is a local-first material and note workspace for creative projects.
 It keeps existing Vault files, media, web captures, links, posts, short text,
@@ -31,9 +31,10 @@ in `<your-vault>/.obsidian/plugins/sourcebook/`, then enable Sourcebook in
 
 ## Verification
 
-Draft releases created from this workflow attach GitHub build provenance
-attestations for each standalone asset. Verify the attestation from the
-release before installing a public release.
+When the repository is public, draft releases created from this workflow
+attach GitHub build provenance attestations for each standalone asset. Private
+repository drafts skip that GitHub-hosted step because GitHub does not offer
+attestation storage for personal private repositories.
 
 Before publishing this draft, complete real-app tests on a copy of a Vault.
 See the [README](README.md) for product details and [CONTRIBUTING.md](CONTRIBUTING.md)
