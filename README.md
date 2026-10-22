@@ -54,7 +54,8 @@ Sourcebook never sends material automatically: you choose exactly what to pack
 and where to use it.
 
 ## Optional: collect from the browser with Sourcebook Picker
-<img width="1672" height="718" alt="图片" src="https://github.com/user-attachments/assets/3a8aac2b-0afb-4891-b687-7e95fb2e731a" />
+<img width="1920" height="600" alt="你的段落文字 (7)" src="https://github.com/user-attachments/assets/08edcae8-bcca-47c7-b144-747b2b7209e3" />
+
 
 
 [Sourcebook Picker](https://sourcebook.online/obsidian-plugin/?utm_source=github_obsidian_readme&utm_medium=referral&utm_campaign=picker_install) is a Chrome and
