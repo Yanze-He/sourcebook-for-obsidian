@@ -87,7 +87,7 @@ Sourcebook 上架 Obsidian Community Plugins 后：
 
 ## 要求
 
-- Obsidian 1.8.0 或更高版本。
+- Obsidian 1.13.0 或更高版本。
 - 仅支持桌面端 Obsidian，暂不支持移动端。
 - 只有使用可选的 Sourcebook Picker 时才需要 Chromium 浏览器。
 
@@ -102,10 +102,9 @@ Sourcebook 只在当前打开的 Vault 中工作：不会扫描无关笔记正�
 - 只有打开“添加 Vault 文件”选择器时，Sourcebook 才会列出 Vault 文件；选择器会
   排除 Sourcebook 管理的文件与已经加入管理的文件。
 - 只有你主动点击复制时才会使用剪贴板；Sourcebook 不会读取剪贴板内容。
-- “复制文件给 AI”是桌面端的主动操作。在 macOS 与 Windows 上，它使用系统的文件
-  列表剪贴板，让选中的本地文件可以粘贴到 Agent 中。它只会使用固定的系统剪贴板
-  助手与经过校验的文件路径，绝不执行由网页或笔记内容拼接出的 Shell 命令。若选择了
-  短文字，会在操作系统临时目录中生成短暂使用的 `.txt` 文件。
+- “复制文件给 AI”是桌面端的主动操作。它会把经过校验的本地文件 URI 写入系统
+  剪贴板，让选中的本地文件可以粘贴到 Agent 中；Sourcebook 不会执行 Shell 命令。若
+  选择了短文字，会在操作系统临时目录中生成短暂使用的 `.txt` 文件。
 - 删除受管理的 Book 或导入素材时，会遵从 Obsidian 配置的废纸篓行为；从 Book
   移出素材只会取消关联，不会删除原始 Vault 文件。
 

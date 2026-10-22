@@ -1,15 +1,9 @@
-import { App, Modal, FuzzySuggestModal, TFile, Notice } from 'obsidian';
+import { App, Modal, FuzzySuggestModal, TFile, Notice, setIcon } from 'obsidian';
 import { message } from './core';
 export type Language = 'zh' | 'en';
 export const label = (lang: Language, zh: string, en: string): string => lang === 'zh' ? zh : en;
 export function el<K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, text = '', cls = ''): HTMLElementTagNameMap[K] {
-    const node = parent.ownerDocument.createElement(tag);
-    if (text)
-        node.textContent = text;
-    if (cls)
-        node.className = cls;
-    parent.append(node);
-    return node;
+    return parent.createEl(tag, { text, cls });
 }
 export function action(parent: HTMLElement, text: string, fn: () => void | Promise<void>, cls = ''): HTMLButtonElement {
     const b = el(parent, 'button', text, cls);
@@ -139,11 +133,7 @@ export class PickerPairingModal extends Modal {
         }, 'sb-pairing-refresh');
         refresh.setAttribute('aria-label', label(this.language, '刷新配对码', 'Refresh pairing code'));
         refresh.title = label(this.language, '刷新配对码', 'Refresh pairing code');
-        const refreshIcon = refresh.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        refreshIcon.setAttribute('aria-hidden', 'true'); refreshIcon.setAttribute('viewBox', '0 0 24 24');
-        const refreshPath = refresh.ownerDocument.createElementNS('http://www.w3.org/2000/svg', 'path');
-        refreshPath.setAttribute('d', 'M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5');
-        refreshIcon.append(refreshPath); refresh.append(refreshIcon);
+        setIcon(refresh, 'refresh-cw');
         renderConnection();
         const syncConnection = async () => {
             const next = await this.isConnected();

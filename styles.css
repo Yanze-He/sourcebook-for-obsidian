@@ -1,13 +1,13 @@
 /* Sourcebook Desktop-derived UI, scoped to the plugin surface. */
 .sourcebook-plugin-host {
-  width: 100% !important;
-  height: 100% !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  background: #fff !important;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+  background: #fff;
 }
-.sourcebook-view-shell .view-header { display: none !important; }
-.sourcebook-view-shell .view-content { height: 100% !important; padding: 0 !important; }
+.sourcebook-view-shell .view-header { display: none; }
+.sourcebook-view-shell .view-content { height: 100%; padding: 0; }
 
 .sourcebook-plugin-root {
   --sb-bg: #f4f3ed;
@@ -49,7 +49,6 @@
   font-variant-ligatures: common-ligatures;
   letter-spacing: normal;
   text-decoration: none;
-  text-indent: 0;
   text-transform: none;
   text-shadow: none;
   -webkit-appearance: none;
@@ -214,22 +213,22 @@
 .book-switcher svg { flex: 0 0 auto; transition: transform .16s ease; }
 .book-switcher[aria-expanded="true"] svg { transform: rotate(180deg); }
 .sourcebook-plugin-root .popover-dismiss-layer {
-  position: fixed !important;
-  z-index: 88 !important;
-  inset: 0 !important;
-  display: block !important;
-  width: 100vw !important;
-  height: 100dvh !important;
-  min-width: 0 !important;
-  min-height: 0 !important;
-  margin: 0 !important;
-  padding: 0 !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  appearance: none !important;
-  box-shadow: none !important;
-  background: transparent !important;
-  color: transparent !important;
+  position: fixed;
+  z-index: 88;
+  inset: 0;
+  display: block;
+  width: 100vw;
+  height: 100dvh;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  appearance: none;
+  box-shadow: none;
+  background: transparent;
+  color: transparent;
 }
 .book-picker-popover {
   position: absolute;
@@ -277,15 +276,15 @@
 .book-picker-popover .book-menu-select { flex: 1 1 auto; min-width: 0; grid-template-columns: minmax(0,1fr) 18px; }
 .book-picker-divider { height: 1px; margin: 6px 0 4px; background: var(--sb-line); }
 .book-picker-popover .book-picker-new { color: var(--sb-blue); font-weight: 650; }
-.book-picker-popover .book-picker-new svg { color: var(--sb-blue) !important; }
+.book-picker-popover .book-picker-new svg { color: var(--sb-blue); }
 .book-options-popover { position: absolute; z-index: 104; top: 0; left: calc(100% + 7px); display: grid; width: 168px; padding: 5px; border: 1px solid var(--sb-line); border-radius: 8px; background: #fff; box-shadow: 0 12px 28px rgba(31,30,26,.15); }
 .book-options-popover button { grid-template-columns: 18px minmax(0,1fr); }
 .book-options-popover button.is-danger { color: var(--sb-rose); }
-.book-options-popover button.is-danger svg { color: var(--sb-rose) !important; }
+.book-options-popover button.is-danger svg { color: var(--sb-rose); }
 .add-actions-divider { margin: 4px 2px; }
-.book-picker-popover .add-actions-picker-connect { grid-template-columns: 18px minmax(0, 1fr) auto; background: var(--sb-blue) !important; color: #fff !important; font-weight: 650; }
-.book-picker-popover .add-actions-picker-connect:hover { background: #0059d7 !important; }
-.book-picker-popover .add-actions-picker-connect svg { color: currentColor !important; }
+.book-picker-popover .add-actions-picker-connect { grid-template-columns: 18px minmax(0, 1fr) auto; background: var(--sb-blue); color: #fff; font-weight: 650; }
+.book-picker-popover .add-actions-picker-connect:hover { background: #0059d7; }
+.book-picker-popover .add-actions-picker-connect svg { color: currentColor; }
 .book-picker-popover .add-actions-picker-connect .picker-connection-status { min-width: max-content; overflow: visible; text-overflow: clip; white-space: nowrap; }
 
 /* Search toolbar */
@@ -318,12 +317,12 @@
 .sourcebook-plugin-root .search-box input:focus-visible {
   width: 100%;
   min-width: 0;
-  padding: 0 !important;
-  border: 0 !important;
+  padding: 0;
+  border: 0;
   border-radius: 0;
-  outline: 0 !important;
-  box-shadow: none !important;
-  background: transparent !important;
+  outline: 0;
+  box-shadow: none;
+  background: transparent;
   color: var(--sb-ink);
   font-size: 12px;
 }
@@ -422,9 +421,9 @@
   font-weight: 400;
   white-space: nowrap;
 }
-.sourcebook-plugin-root .filter-chip { border-color: var(--sb-line) !important; background: transparent !important; }
+.sourcebook-plugin-root .filter-chip { border-color: var(--sb-line); background: transparent; }
 .filter-chip:hover { border-color: var(--sb-line-strong); background: var(--sb-surface-2); }
-.filter-chip[aria-pressed="true"] { border-color: var(--sb-blue) !important; background: var(--sb-blue) !important; color: #fff !important; font-weight: 650; }
+.filter-chip[aria-pressed="true"] { border-color: var(--sb-blue); background: var(--sb-blue); color: #fff; font-weight: 650; }
 .source-filter-section .filter-row { max-height: 116px; padding-right: 4px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 
 .workspace-warning {
@@ -501,7 +500,7 @@
 .source-masonry-source-link:hover strong,
 .source-card-source-link:hover { color: var(--sb-blue); text-decoration: underline; }
 .source-card-source-link { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sourcebook-plugin-root .source-card-source-link { background: transparent !important; box-shadow: none !important; }
+.sourcebook-plugin-root .source-card-source-link { background: transparent; box-shadow: none; }
 .source-site-mark { display: grid; flex: 0 0 auto; width: 22px; height: 22px; place-items: center; border-radius: 6px; background: #f4f4f0; color: var(--sb-ink); }
 .source-file-preview { min-height: 92px; align-content: start; }
 .source-file-preview .source-card-kind { margin-bottom: 4px; }
@@ -601,7 +600,7 @@
 .source-masonry-card.kind-audio .source-file-preview { min-height: 104px; background: #eeefea; }
 .source-masonry-card.kind-video .source-file-preview { min-height: 126px; background: #f1f1ed; }
 .source-masonry-card.kind-link .source-masonry-body { padding-top: 18px; }
-.source-masonry-card.kind-post:not(:has(.source-masonry-media)) .source-masonry-body { padding-top: 18px; }
+.source-masonry-card.kind-post.has-no-media .source-masonry-body { padding-top: 18px; }
 .source-masonry-card.kind-conversation { border-color: #9cc4ff; background: #eff6ff; }
 .source-masonry-card.kind-conversation .source-masonry-body,
 .source-masonry-card.kind-conversation .source-text-preview { background: #eff6ff; }
@@ -629,9 +628,9 @@
   transition: opacity .14s ease, transform .14s ease;
 }
 .source-masonry-card:hover .source-card-hover-actions,
-.source-masonry-card:has(:focus-visible) .source-card-hover-actions { opacity: 1; pointer-events: auto; transform: translateY(0); }
+.source-masonry-card:focus-within .source-card-hover-actions { opacity: 1; pointer-events: auto; transform: translateY(0); }
 .source-masonry-card.is-dimmed:hover .source-card-hover-actions,
-.source-masonry-card.is-dimmed:has(:focus-visible) .source-card-hover-actions { opacity: 1; }
+.source-masonry-card.is-dimmed:focus-within .source-card-hover-actions { opacity: 1; }
 .source-card-hover-actions .source-card-quick-action,
 .source-card-hover-actions .source-card-favorite,
 .source-card-hover-actions .source-select-button {
@@ -678,7 +677,7 @@
 .source-masonry-card > .source-card-favorite-pinned[hidden] { display: none; }
 .source-masonry-card.favorited > .source-card-favorite-pinned { opacity: 1; pointer-events: auto; }
 .source-masonry-card:hover .source-card-favorite-pinned,
-.source-masonry-card:has(:focus-visible) .source-card-favorite-pinned { opacity: 0; pointer-events: none; }
+.source-masonry-card:focus-within .source-card-favorite-pinned { opacity: 0; pointer-events: none; }
 .source-masonry.is-selecting .source-card-hover-actions .source-card-quick-action,
 .source-masonry.is-selecting .source-card-hover-actions .source-card-favorite { visibility: visible; }
 .source-masonry.is-selecting .source-masonry-media-button { pointer-events: none; }
@@ -735,7 +734,7 @@
   transform: none;
 }
 .batch-actions-fab.is-collapsed { height: 42px; min-height: 42px; padding: 0 17px; border-radius: 999px; }
-.batch-actions-entry { width: 42px; padding: 0 !important; justify-content: center; }
+.batch-actions-entry { width: 42px; padding: 0; justify-content: center; }
 .selection-entry-actions .batch-actions-fab.is-collapsed { transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease; }
 .selection-entry-actions .batch-actions-fab.is-collapsed:hover { border-color: #11110f; background: #30302c; box-shadow: 0 10px 22px rgba(17,17,15,.16); color: #fff; transform: translateY(-2px) scale(1.05); }
 .selection-entry-actions .batch-actions-fab.is-collapsed:focus-visible { border-color: #11110f; background: #30302c; color: #fff; outline: 2px solid var(--sb-blue); outline-offset: 2px; }
@@ -869,10 +868,10 @@
 .modal-close-button { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--sb-line); border-radius: 8px; background: #fff; color: var(--sb-ink); }
 .modal-close-button:hover { border-color: var(--sb-line-strong); background: var(--sb-surface-2); }
 .sourcebook-plugin-root .handoff-modal > header > .modal-close-button {
-  position: static !important;
-  top: auto !important;
-  right: auto !important;
-  margin: 0 !important;
+  position: static;
+  top: auto;
+  right: auto;
+  margin: 0;
 }
 .modal-close-button svg,
 .detail-close-action svg { display: block; flex: 0 0 auto; }
@@ -908,11 +907,11 @@
 .handoff-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 22px; }
 .handoff-section-heading h3,
 .handoff-copy-help h3 { margin: 0; color: var(--sb-ink); font-size: 14px; font-weight: 720; line-height: 1.2; }
-.sourcebook-plugin-root .handoff-scope-toggle { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; width: 100%; min-height: 32px; gap: 10px; padding: 4px 0; border: 0; border-radius: 6px; background: transparent !important; color: var(--sb-muted); text-align: left; }
+.sourcebook-plugin-root .handoff-scope-toggle { display: grid; grid-template-columns: minmax(0,1fr) auto auto; align-items: center; width: 100%; min-height: 32px; gap: 10px; padding: 4px 0; border: 0; border-radius: 6px; background: transparent; color: var(--sb-muted); text-align: left; }
 .handoff-scope-title { display: inline-flex; align-items: baseline; min-width: 0; gap: 8px; }
 .handoff-scope-toggle h3 { flex: 0 0 auto; margin: 0; color: var(--sb-ink); font-size: 14px; font-weight: 720; line-height: 1.2; }
 .handoff-scope-title small { min-width: 0; overflow: hidden; color: var(--sb-muted); font-size: 10px; font-weight: 500; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
-.sourcebook-plugin-root .handoff-scope-toggle:hover { background: rgba(17,17,15,.035) !important; color: var(--sb-ink); }
+.sourcebook-plugin-root .handoff-scope-toggle:hover { background: rgba(17,17,15,.035); color: var(--sb-ink); }
 .handoff-scope-toggle:focus-visible { outline: 2px solid var(--sb-blue); outline-offset: 2px; }
 .handoff-scope-stats { display: inline-flex; align-items: center; gap: 12px; font-size: 10px; font-weight: 650; white-space: nowrap; }
 .handoff-scope-toggle svg { transition: transform .16s ease; }
@@ -966,7 +965,7 @@
   display: grid;
   min-width: min(430px, calc(100vw - 40px));
   overflow: hidden;
-  padding: 0 !important;
+  padding: 0;
   border: 1px solid var(--sb-line);
   border-radius: 8px;
   background: #fff;
@@ -1021,34 +1020,34 @@
 .sourcebook-plugin-root .add-actions-trigger,
 .sourcebook-plugin-root .book-switcher,
 .sourcebook-plugin-root .round-tool-button,
-.sourcebook-plugin-root .density-cycle-button { background: #fff !important; }
+.sourcebook-plugin-root .density-cycle-button { background: #fff; }
 .sourcebook-plugin-root .desktop-button.is-active,
 .sourcebook-plugin-root .round-tool-button.is-active,
-.sourcebook-plugin-root .round-tool-button[aria-pressed="true"] { background: var(--sb-blue-soft) !important; }
-.sourcebook-plugin-root .source-card-note { justify-content: flex-start; background: transparent !important; }
+.sourcebook-plugin-root .round-tool-button[aria-pressed="true"] { background: var(--sb-blue-soft); }
+.sourcebook-plugin-root .source-card-note { justify-content: flex-start; background: transparent; }
 .sourcebook-plugin-root .detail-title-action,
 .sourcebook-plugin-root .detail-delete-button,
-.sourcebook-plugin-root .detail-footer-favorite { background: transparent !important; }
+.sourcebook-plugin-root .detail-footer-favorite { background: transparent; }
 .sourcebook-plugin-root .detail-title-action:hover:not(:disabled),
-.sourcebook-plugin-root .detail-footer-favorite:hover { background: var(--sb-surface-2) !important; }
-.sourcebook-plugin-root .source-card-select { color: #fff !important; }
+.sourcebook-plugin-root .detail-footer-favorite:hover { background: var(--sb-surface-2); }
+.sourcebook-plugin-root .source-card-select { color: #fff; }
 .sourcebook-plugin-root .source-card-select svg { stroke: currentColor; }
-.settings-popover button { justify-content: flex-start !important; text-align: left !important; background: transparent !important; }
-.settings-popover button:hover { background: var(--sb-surface-2) !important; }
+.settings-popover button { justify-content: flex-start; text-align: left; background: transparent; }
+.settings-popover button:hover { background: var(--sb-surface-2); }
 .picker-connection-status { color: var(--sb-muted); font-size: 11px; font-style: normal; font-weight: 600; margin-left: auto; }
 .picker-connection-status.is-connected { color: var(--sb-blue); }
 .add-actions-picker-connect .picker-connection-status { color: rgba(255,255,255,.8); }
 .sb-pairing-code-row { display: block; }
 .sb-pairing-code-field { position: relative; }
 .sb-pairing-code-row .sb-pairing-code { box-sizing: border-box; width: 100%; padding-right: 44px; }
-.sb-pairing-refresh { position: absolute; top: 50%; right: 5px; display: grid; width: 32px; height: 32px; transform: translateY(-50%); padding: 0 !important; border: 0 !important; border-radius: 6px; background: transparent !important; place-items: center; }
-.sb-pairing-refresh:hover, .sb-pairing-refresh:focus-visible { background: transparent !important; color: var(--sb-blue); }
+.sb-pairing-refresh { position: absolute; top: 50%; right: 5px; display: grid; width: 32px; height: 32px; transform: translateY(-50%); padding: 0; border: 0; border-radius: 6px; background: transparent; place-items: center; }
+.sb-pairing-refresh:hover, .sb-pairing-refresh:focus-visible { background: transparent; color: var(--sb-blue); }
 .sb-pairing-refresh svg { fill: none; height: 16px; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2; width: 16px; }
 .sb-pairing-connection-status { margin-left: 8px; border: 1px solid var(--sb-line); border-radius: 999px; color: var(--sb-muted); font-size: 11px; font-weight: 680; line-height: 1; padding: 5px 7px; }
 .sb-pairing-connection-status.is-connected { border-color: #b8d9c0; background: #f1faf3; color: #277443; }
 .sb-pairing-footer { width: 100%; }
 .sb-pairing-download { margin-right: auto; }
-.sb-pairing-disconnect-slot { display: contents; }
+.sb-pairing-disconnect-slot { display: inline-flex; }
 .handoff-entry-popover,
 .batch-more-popover { z-index: 122; }
 .batch-popover-dismiss { z-index: 121; }
@@ -1059,7 +1058,7 @@
 
 /* A FormModal is already inside Obsidian's modal surface: flatten the nested
    card so it reads as a single, uninterrupted dialog. */
-.modal.sb-modal-shell { width: min(430px, calc(100vw - 40px)); max-width: calc(100vw - 40px); padding: 0 !important; overflow: hidden; border: 1px solid var(--background-modifier-border, #deddd6); border-radius: 10px; background: #fff !important; box-shadow: 0 16px 38px rgba(17,17,15,.14); }
+.modal.sb-modal-shell { width: min(430px, calc(100vw - 40px)); max-width: calc(100vw - 40px); padding: 0; overflow: hidden; border: 1px solid var(--background-modifier-border, #deddd6); border-radius: 10px; background: #fff; box-shadow: 0 16px 38px rgba(17,17,15,.14); }
 .modal.sb-modal-shell .sb-modal { width: 100%; min-width: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
 
 @media (max-width: 900px) {

@@ -2,6 +2,15 @@
 
 All notable changes to Sourcebook for Obsidian are documented here.
 
+## 0.2.4
+
+- Address additional Community Plugins review findings: remove shell execution,
+  use Obsidian UI helpers, eliminate forced CSS overrides, and make settings
+  searchable in Obsidian 1.13+.
+- Use the native file-URI clipboard format for explicitly requested original
+  file copies. Short text attachments continue to be generated only for an
+  explicit Send to AI action.
+
 ## 0.2.3
 
 - Let the release workflow create a testable draft while the repository remains

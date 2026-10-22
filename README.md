@@ -110,7 +110,7 @@ Vault before trying any pre-release build.
 
 ## Requirements
 
-- Obsidian 1.8.0 or later.
+- Obsidian 1.13.0 or later.
 - Desktop Obsidian. Mobile is not supported yet.
 - A Chromium browser is needed only for the optional Sourcebook Picker.
 
@@ -127,12 +127,11 @@ pairing.
   it excludes Sourcebook-managed and already-managed files from that choice.
 - Clipboard access is used only after you press a copy action. Sourcebook never
   reads your clipboard.
-- **Copy files for AI** is an explicit desktop-only action. On macOS and
-  Windows it uses the operating system's file-list clipboard so selected local
-  files can be pasted into an agent. It invokes only a fixed system clipboard
-  helper with validated paths—never a shell command constructed from web or
-  note content. Short text selected for that action is written as a temporary
-  `.txt` file under the operating system's temporary directory.
+- **Copy files for AI** is an explicit desktop-only action. It writes validated
+  local file URIs to the system clipboard so selected files can be pasted into
+  an agent; Sourcebook never invokes a shell command. Short text selected for
+  that action is written as a temporary `.txt` file under the operating
+  system's temporary directory.
 - Deleting a managed Book or imported asset uses Obsidian's configured trash
   behavior. Removing a material from a Book only unlinks it and preserves its
   original Vault file.

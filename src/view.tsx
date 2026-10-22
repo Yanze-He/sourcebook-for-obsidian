@@ -284,7 +284,7 @@ export class SourcebookView extends ItemView {
 
     private cycleDensity(): void {
         const densities: Density[] = ['compact', 'standard', 'spacious'];
-        this.density = densities[(densities.indexOf(this.density) + 1) % densities.length] as Density;
+        this.density = densities[(densities.indexOf(this.density) + 1) % densities.length]!;
         this.masonryColumns = this.computeMasonryColumns();
         this.renderApp();
     }
@@ -392,7 +392,8 @@ export class SourcebookView extends ItemView {
     }
 
     private renderBookSwitcher(): JSX.Element {
-        const book = this.book as Book;
+        const book = this.book;
+        if (!book) return <></>;
         const activeBooks = this.library.books.filter(item => !item.archived);
         return <div className="book-switcher-wrap">
             <button aria-expanded={this.bookMenuOpen} className="book-switcher" onClick={() => { this.bookMenuOpen = !this.bookMenuOpen; if (!this.bookMenuOpen) this.bookOptionsId = ''; this.filterOpen = false; this.addMenuOpen = false; this.settingsMenuOpen = false; this.renderApp(); }} type="button"><strong>{book.title}</strong><span>{activeBooks.length} {this.t('本', activeBooks.length === 1 ? 'Book' : 'Books')}</span><Icon name="chevron-down" size={16}/></button>
@@ -472,7 +473,7 @@ export class SourcebookView extends ItemView {
         return <><div aria-hidden="true" className="popover-dismiss-layer" onClick={() => { this.filterOpen = false; this.renderApp(); }}/><div className="source-item-filter-popover">
             <div className="filter-popover-head"><strong>{this.t('筛选', 'Filter')}</strong><button disabled={!hasFilters} onClick={() => { this.kindFilters.clear(); this.sourceFilters.clear(); this.dateFilter = 'all'; this.localFilter = 'all'; this.renderApp(); }} type="button">{this.t('重置', 'Reset')}</button></div>
             <section className="filter-section"><h2>{this.t('时间', 'Time')}</h2><div className="filter-row">{chip(this.dateFilter === 'today', this.t('今天', 'Today'), () => { this.dateFilter = this.dateFilter === 'today' ? 'all' : 'today'; this.renderApp(); })}{chip(this.dateFilter === 'yesterday', this.t('昨天', 'Yesterday'), () => { this.dateFilter = this.dateFilter === 'yesterday' ? 'all' : 'yesterday'; this.renderApp(); })}{chip(this.dateFilter === 'week', this.t('本周', 'This week'), () => { this.dateFilter = this.dateFilter === 'week' ? 'all' : 'week'; this.renderApp(); })}</div></section>
-            <section className="filter-section"><h2>{this.t('类型', 'Type')}</h2><div className="filter-row">{(['image', 'text', 'note', 'video', 'audio', 'file', 'link', 'post', 'conversation'] as Kind[]).map(kind => chip(this.kindFilters.has(kind), kindLabel(kind, this.plugin.settings.language), () => { if (this.kindFilters.has(kind)) this.kindFilters.delete(kind); else this.kindFilters.add(kind); this.renderApp(); }))}</div></section>
+            <section className="filter-section"><h2>{this.t('类型', 'Type')}</h2><div className="filter-row">{(['image', 'text', 'note', 'video', 'audio', 'file', 'link', 'post', 'conversation'] satisfies Kind[]).map(kind => chip(this.kindFilters.has(kind), kindLabel(kind, this.plugin.settings.language), () => { if (this.kindFilters.has(kind)) this.kindFilters.delete(kind); else this.kindFilters.add(kind); this.renderApp(); }))}</div></section>
             <section className="filter-section"><h2>{this.t('本地文件', 'Local file')}</h2><div className="filter-row">{chip(this.localFilter === 'none', this.t('无本地文件', 'No local file'), () => { this.localFilter = this.localFilter === 'none' ? 'all' : 'none'; this.renderApp(); })}{chip(this.localFilter === 'local', this.t('本地文件', 'Local file'), () => { this.localFilter = this.localFilter === 'local' ? 'all' : 'local'; this.renderApp(); })}{chip(this.localFilter === 'missing', this.t('文件丢失', 'File missing'), () => { this.localFilter = this.localFilter === 'missing' ? 'all' : 'missing'; this.renderApp(); })}</div></section>
             <section className="filter-section source-filter-section"><h2>{this.t('来源', 'Source')}</h2><div className="filter-row">{sourceOptions.map(source => chip(this.sourceFilters.has(source), source, () => { if (this.sourceFilters.has(source)) this.sourceFilters.delete(source); else this.sourceFilters.add(source); this.renderApp(); }))}</div></section>
         </div></>;
@@ -493,7 +494,8 @@ export class SourcebookView extends ItemView {
             'source-masonry-card', `kind-${item.kind}`,
             selected ? 'selected' : '', faded ? 'is-dimmed' : '',
             favorite ? 'favorited' : '',
-            !item.filePath && !item.thumbnailUrl ? 'has-no-artwork' : ''
+            !item.filePath && !item.thumbnailUrl ? 'has-no-artwork' : '',
+            item.kind === 'post' && !item.filePath && !item.thumbnailUrl ? 'has-no-media' : ''
         ].filter(Boolean).join(' ');
         const onCardClick = () => {
             if (this.selectionMode) this.toggleSelected(item);
@@ -517,7 +519,7 @@ export class SourcebookView extends ItemView {
                 : <div className="source-file-preview"><div className="source-card-kind"><Icon name={kindIcon(item.kind)} size={16}/><strong>{item.filePath?.split('.').pop()?.toUpperCase() || kindLabel(item.kind, this.plugin.settings.language)}</strong>{item.filePath ? <span>{humanSize(item.fileSize)}</span> : null}</div></div>;
         return <article className={cls} data-source-id={item.entry.id} onClick={onCardClick}>
             <div className="source-card-hover-actions">
-                {openableFile ? <button aria-label={this.t('打开原文件', 'Open original file')} className="source-card-quick-action" data-tooltip={this.t('打开原文件', 'Open original file')} onClick={(event: MouseEvent) => { event.stopPropagation(); void this.openOriginal(item.filePath as string); }} type="button"><Icon name="external-link" size={15}/></button> : null}
+                {item.filePath && !item.missing ? <button aria-label={this.t('打开原文件', 'Open original file')} className="source-card-quick-action" data-tooltip={this.t('打开原文件', 'Open original file')} onClick={(event: MouseEvent) => { event.stopPropagation(); const path = item.filePath; if (path) void this.openOriginal(path); }} type="button"><Icon name="external-link" size={15}/></button> : null}
                 <button aria-label={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} aria-pressed={favorite} className={`source-card-favorite${favorite ? ' active' : ''}`} data-tooltip={favorite ? this.t('取消收藏', 'Remove favorite') : this.t('收藏', 'Favorite')} onClick={(event: MouseEvent) => { event.stopPropagation(); void this.toggleFavorite(item); }} type="button"><Icon filled={favorite} name="star" size={13}/></button>
                 <button aria-label={this.selectionMode ? this.t('查看详情', 'View details') : this.t('复制到剪贴板', 'Copy to clipboard')} className="source-select-button" data-tooltip={this.selectionMode ? this.t('查看详情', 'View details') : this.t('复制到剪贴板', 'Copy to clipboard')} onClick={(event: MouseEvent) => { event.stopPropagation(); if (this.selectionMode) this.openDetail(item); else void this.copyCard(item); }} type="button">{this.selectionMode ? <><Icon name="eye" size={14}/><span className="source-select-label">{this.t('查看', 'View')}</span></> : <><Icon name="copy" size={14}/><span className="source-select-label">{this.t('复制', 'Copy')}</span></>}</button>
             </div>

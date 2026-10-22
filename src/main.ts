@@ -1,4 +1,4 @@
-import { Plugin, PluginSettingTab, Setting, App, Notice, TAbstractFile } from 'obsidian';
+import { Plugin, PluginSettingTab, App, Notice, TAbstractFile, SettingDefinitionItem } from 'obsidian';
 import { SourcebookStore } from './store';
 import { ObsidianVaultIO } from './host';
 import { SourcebookView, VIEW_TYPE } from './view';
@@ -94,14 +94,32 @@ export default class SourcebookPlugin extends Plugin {
 
 class SourcebookSettings extends PluginSettingTab {
     constructor(app: App, private plugin: SourcebookPlugin) { super(app, plugin); }
-    display(): void {
-        this.containerEl.replaceChildren();
-        new Setting(this.containerEl).setName('Language / 语言').addDropdown(dropdown => dropdown.addOption('zh', '中文').addOption('en', 'English').setValue(this.plugin.settings.language).onChange(async (value: string) => {
-            this.plugin.settings.language = value === 'zh' ? 'zh' : 'en';
-            await this.plugin.saveSettings();
-            this.plugin.refresh();
-        }));
-        new Setting(this.containerEl).setName('Storage / 存储').setDesc('Schema v2 stores Book membership and notes in Book Markdown. Existing Vault files are referenced directly. Send to AI copies the selected original files to the clipboard when supported. v1 test data is not migrated.');
-        new Setting(this.containerEl).setName('Open workspace / 打开工作台').addButton(button => button.setButtonText('Sourcebook').onClick(() => { void this.plugin.openView().catch(error => new Notice(String(error))); }));
+    getSettingDefinitions(): SettingDefinitionItem[] {
+        return [
+            {
+                name: 'Language / 语言',
+                desc: 'Choose the Sourcebook interface language.',
+                aliases: ['language', '语言', '中文', 'English'],
+                control: { key: 'language', type: 'dropdown', options: { zh: '中文', en: 'English' }, defaultValue: 'en' }
+            },
+            {
+                name: 'Storage / 存储',
+                desc: 'Book membership and notes are stored in Book Markdown. Existing Vault files are referenced directly. Send to AI copies selected original files to the clipboard when supported.'
+            },
+            {
+                name: 'Open workspace / 打开工作台',
+                desc: 'Open the Sourcebook materials workspace.',
+                action: () => { void this.plugin.openView().catch(error => new Notice(String(error))); }
+            }
+        ];
+    }
+    getControlValue(key: string): unknown {
+        return key === 'language' ? this.plugin.settings.language : undefined;
+    }
+    async setControlValue(key: string, value: unknown): Promise<void> {
+        if (key !== 'language') return;
+        this.plugin.settings.language = value === 'zh' ? 'zh' : 'en';
+        await this.plugin.saveSettings();
+        this.plugin.refresh();
     }
 }

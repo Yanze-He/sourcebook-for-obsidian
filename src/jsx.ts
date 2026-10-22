@@ -10,14 +10,6 @@ export function h(type: ElementType, props: Record<string, unknown> | null, ...c
 
 export function Fragment(props: { children?: Child }): Child { return props.children ?? []; }
 
-function flatten(children: Child[], output: Child[] = []): Child[] {
-    for (const child of children) {
-        if (Array.isArray(child)) flatten(child, output);
-        else output.push(child);
-    }
-    return output;
-}
-
 const propertyNames = new Set(['value', 'checked', 'selected', 'disabled', 'readOnly', 'multiple', 'autofocus', 'autoFocus', 'open', 'muted', 'controls', 'loop', 'playsInline']);
 const eventListeners = new WeakMap<Element, Map<string, EventListener>>();
 
@@ -109,8 +101,8 @@ function createNode(value: Renderable, documentRef: Document, svg = false): Node
     const tag = value.type as string;
     const nextSvg = svg || SVG_TAGS.has(tag);
     const element = nextSvg
-        ? documentRef.createElementNS('http://www.w3.org/2000/svg', tag)
-        : documentRef.createElement(tag);
+        ? createSvg(tag as keyof SVGElementTagNameMap)
+        : createEl(tag as keyof HTMLElementTagNameMap);
     for (const [key, prop] of Object.entries(value.props)) setProp(element, key, prop);
     (element as Element & { __jsxProps?: Record<string, unknown> }).__jsxProps = value.props;
     reconcileChildren(element, normalized(value.children), documentRef, nextSvg);
@@ -154,7 +146,7 @@ function reconcileChildren(parent: Node, next: Renderable[], documentRef: Docume
 declare global {
     namespace JSX {
         interface IntrinsicElements { [name: string]: unknown; }
-        interface Element extends VNode {}
+        type Element = VNode;
         interface ElementChildrenAttribute { children: Record<string, never>; }
     }
 }

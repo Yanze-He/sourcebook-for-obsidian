@@ -38,11 +38,17 @@ class Modal{constructor(app){this.app=app;this.contentEl=document.createElement(
 class FuzzySuggestModal extends Modal{onOpen(){const input=document.createElement('input');input.placeholder='Select a file';this.contentEl.append(input);const list=document.createElement('div');this.contentEl.append(list);const draw=()=>{list.replaceChildren();for(const item of this.getItems().filter(i=>this.getItemText(i).includes(input.value))){const b=document.createElement('button');b.textContent=this.getItemText(item);b.onclick=()=>{this.onChooseItem(item);this.close();};list.append(b);}};input.oninput=draw;draw();}}
 const notices=[];
 class Notice{constructor(m){notices.push(m);const d=document.getElementById('notices');d.textContent=m;}}
+const applyElementOptions=(el,options)=>{if(typeof options==='string')el.className=options;else if(options){if(options.text)el.textContent=options.text;if(options.cls)el.className=Array.isArray(options.cls)?options.cls.join(' '):options.cls;}return el;};
+window.createEl=(tag,options)=>applyElementOptions(document.createElement(tag),options);
+window.createSvg=(tag,options)=>applyElementOptions(document.createElementNS('http://www.w3.org/2000/svg',tag),options);
+Element.prototype.createEl=function(tag,options){const el=window.createEl(tag,options);this.append(el);return el;};
+Element.prototype.createSvg=function(tag,options){const el=window.createSvg(tag,options);this.append(el);return el;};
+const setIcon=(el,name)=>{const icon=window.createSvg('svg');icon.setAttribute('viewBox','0 0 24 24');icon.setAttribute('aria-hidden','true');const path=window.createSvg('path');path.setAttribute('d',name==='refresh-cw'?'M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2':'M3 12h18');icon.append(path);el.replaceChildren(icon);};
 class Setting{constructor(){}setName(){return this;}setDesc(){return this;}addDropdown(fn){const c={addOption(){return this;},setValue(){return this;},onChange(){return this;}};fn(c);return this;}addToggle(fn){fn({setValue(){return this;},onChange(){return this;}});return this;}addButton(fn){fn({setButtonText(){return this;},onClick(){return this;}});return this;}}
 class PluginSettingTab{constructor(app,plugin){this.app=app;this.plugin=plugin;this.containerEl=document.createElement('div');}}
 class Plugin{constructor(app){this.app=app;this.cleanups=[];}async loadData(){return {language:'en',bookId:'',nativeClipboard:false,favoriteEntries:[]};}async saveData(d){this.saved=d;}registerView(type,fn){registry.set(type,fn);}addRibbonIcon(){}addCommand(){}addSettingTab(){}registerEvent(ref){this.cleanups.push(()=>{events.set(ref.event,events.get(ref.event).filter(fn=>fn!==ref.fn));});}register(fn){this.cleanups.push(fn);}}
-const host={TAbstractFile,TFile,TFolder,FileSystemAdapter,parseYaml,ItemView,Modal,FuzzySuggestModal,Notice,Setting,PluginSettingTab,Plugin};
-window.require=spec=>{if(spec==='obsidian')return host;if(spec==='node:child_process')return {execFile:()=>{throw Error('Native OS execution is disabled in browser tests');}};throw Error('Unexpected host require '+spec);};
+const host={TAbstractFile,TFile,TFolder,FileSystemAdapter,parseYaml,ItemView,Modal,FuzzySuggestModal,Notice,Setting,PluginSettingTab,Plugin,setIcon};
+window.require=spec=>{if(spec==='obsidian')return host;throw Error('Unexpected host require '+spec);};
 window.module={exports:{}};
 const copiedFiles=[];
 window.__sourcebookCopyFiles=async(paths,texts)=>{copiedFiles.splice(0,copiedFiles.length,...paths,...texts.map(file=>`virtual://${file.name}`));};

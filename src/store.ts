@@ -1,5 +1,5 @@
 import {
-    ACTIVE_START, ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Library,
+    ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Library,
     MaterialMetadata, MAX_IMPORT_BYTES, newBookBody, PickerMetadata, plainTitle, parseRegistry, PROJECT_NOTES_DIR, REGISTRY_PATH, Resolved, ROOT, safeName,
     safeRelative, SCHEMA, serialize, SerialQueue, titleFromPath, VaultIO, webUrl, decodeBook, rewriteBookBody,
     kindFor, message, DocumentLanguage

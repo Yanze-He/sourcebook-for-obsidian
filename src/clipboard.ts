@@ -1,5 +1,4 @@
-/** Native file-list clipboard, opt-in only. No shell interpolation of file paths. */
-import { execFile } from 'node:child_process';
+/** Native file-list clipboard, opt-in only. */
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -14,7 +13,9 @@ function browserFileClipboardBridge(): BrowserFileClipboardBridge | undefined {
 }
 
 export function fileClipboardPlatform(): boolean {
-    return Boolean(browserFileClipboardBridge()) || (typeof process !== 'undefined' && ['darwin', 'win32'].includes(process.platform));
+    return Boolean(browserFileClipboardBridge()) || Boolean(
+        typeof navigator !== 'undefined' && navigator.clipboard && typeof ClipboardItem !== 'undefined'
+    );
 }
 
 /** Write plain text only after an explicit user action. */
@@ -25,45 +26,33 @@ export async function copyText(text: string): Promise<void> {
     try { await clipboard.writeText(text); }
     catch { throw new Error('Text clipboard access was denied'); }
 }
-/** Mirrors Desktop's AppKit path-list pasteboard write exactly. */
-export function macClipboardScript(paths: string[]): string {
-    return `ObjC.import("AppKit"); const paths = ${JSON.stringify(paths)}; const pasteboard = $.NSPasteboard.generalPasteboard; pasteboard.clearContents; const urls = $.NSMutableArray.array; paths.forEach((path) => urls.addObject($.NSURL.fileURLWithPath($(path)))); if (!pasteboard.writeObjects(urls)) throw new Error("Unable to write files to the clipboard.");`;
-}
-
-/** Mirrors Desktop's Windows Forms file-drop-list write exactly. */
-export function windowsClipboardScript(paths: string[]): string {
-    const parts = paths.map(path => `[void]$files.Add('${path.replace(/'/g, "''")}');`).join(' ');
-    return "$ErrorActionPreference = 'Stop'; Add-Type -AssemblyName System.Windows.Forms; $files = New-Object System.Collections.Specialized.StringCollection; " + parts + " [System.Windows.Forms.Clipboard]::SetFileDropList($files); if (-not [System.Windows.Forms.Clipboard]::ContainsFileDropList()) { throw 'Unable to write files to the clipboard.' }";
-}
-export function nativeCommand(platform: string, paths: string[]): {
-    exe: string;
-    args: string[];
-} {
+function validatePaths(paths: string[]): void {
     if (!paths.length)
         throw new Error('No local files to copy');
     if (paths.length > 100)
         throw new Error('Select at most 100 files');
     if (paths.some(p => !p || [...p].some(char => char.codePointAt(0)! <= 31)))
         throw new Error('Invalid file path');
-    if (platform === 'darwin')
-        return { exe: '/usr/bin/osascript', args: ['-l', 'JavaScript', '-e', macClipboardScript(paths)] };
-    if (platform === 'win32')
-        return { exe: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-STA', '-Command', windowsClipboardScript(paths)] };
-    throw new Error('Native file clipboard is not supported on this platform. Use exported files instead.');
+}
+
+/** Encode a local path as the native file-list URI format understood by Electron. */
+export function fileUri(path: string): string {
+    const normalized = path.replace(/\\/g, '/');
+    const rooted = /^[A-Za-z]:\//.test(normalized) ? `/${normalized}` : normalized.startsWith('/') ? normalized : `/${normalized}`;
+    return `file://${encodeURI(rooted).replace(/#/g, '%23').replace(/\?/g, '%3F')}`;
 }
 export async function copyFiles(paths: string[]): Promise<void> {
     const bridge = browserFileClipboardBridge();
     if (bridge) { await bridge(paths, []); return; }
-    if (!fileClipboardPlatform()) throw new Error('File clipboard requires Obsidian desktop on macOS or Windows');
-    const cmd = nativeCommand(process.platform, paths);
-    await new Promise<void>((resolve, reject) => {
-        const child = execFile(cmd.exe, cmd.args, { timeout: 15000, maxBuffer: 64 * 1024, windowsHide: true }, (error, _out, err) => {
-            if (error)
-                reject(new Error(`Native clipboard failed: ${String(err || error.message).slice(0, 500)}`));
-            else
-                resolve();
-        });
-    });
+    validatePaths(paths);
+    if (!fileClipboardPlatform()) throw new Error('File clipboard requires a current Obsidian desktop version');
+    try {
+        const uris = paths.map(fileUri).join('\r\n');
+        const item = new ClipboardItem({ 'text/uri-list': new Blob([uris], { type: 'text/uri-list' }) });
+        await navigator.clipboard.write([item]);
+    } catch {
+        throw new Error('File clipboard access was denied');
+    }
 }
 
 /** Text records become short-lived OS files for a direct file-list paste. */

@@ -1,8 +1,8 @@
 {
   "id": "sourcebook",
   "name": "Sourcebook",
-  "version": "0.2.3",
-  "minAppVersion": "1.8.0",
+  "version": "0.2.4",
+  "minAppVersion": "1.13.0",
   "description": "Organize Vault files, text, links, and Picker captures into Books. Add native references to project notes and hand off selected context to AI.",
   "author": "Sourcebook contributors",
   "isDesktopOnly": true

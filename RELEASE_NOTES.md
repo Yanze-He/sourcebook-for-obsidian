@@ -1,4 +1,4 @@
-# Sourcebook 0.2.3
+# Sourcebook 0.2.4
 
 Sourcebook is a local-first material and note workspace for creative projects.
 It keeps existing Vault files, media, web captures, links, posts, short text,
@@ -6,8 +6,10 @@ and supported AI conversations together in project-based Books.
 
 ## Highlights
 
-- Resolves Community Plugins review feedback around rendering, clipboard
-  behavior, deletion, and local Picker request validation.
+- Resolves Community Plugins review feedback: uses Obsidian element helpers,
+  removes shell execution, and registers searchable settings definitions.
+- Simplifies stylesheet rules by removing forced overrides and expensive
+  relational selectors while preserving the Sourcebook UI states.
 - Create visual Books for a project, client, film, deck, or creative direction.
 - Preserve source links and add Book-specific context for every material.
 - Add materials to normal Obsidian notes using native links and embeds.
@@ -24,10 +26,13 @@ in `<your-vault>/.obsidian/plugins/sourcebook/`, then enable Sourcebook in
 
 ## Requirements and privacy
 
-- Requires Obsidian 1.8.0 or later on desktop.
+- Requires Obsidian 1.13.0 or later on desktop.
 - Sourcebook works only in the Vault you open. It does not upload Vault content
   or contact a remote service.
 - Sourcebook Picker is optional and connects only after a local pairing action.
+- File attachment copy is available only after an explicit user action. It uses
+  the system clipboard and creates short-lived text attachments only when a
+  selected text record needs to be pasted as a file.
 
 ## Verification
 
