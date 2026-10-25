@@ -1,5 +1,5 @@
 import { App, TFile, TFolder, parseYaml, FileSystemAdapter } from 'obsidian';
-import { VaultIO, FileInfo, Frontmatter, Parsed, safeRelative } from './core';
+import { VaultIO, FileInfo, Frontmatter, Parsed, safeRelative, containingFolder } from './core';
 
 export class ObsidianVaultIO implements VaultIO {
     constructor(readonly app: App) { }
@@ -54,11 +54,12 @@ export class ObsidianVaultIO implements VaultIO {
     private opensInsideObsidian(file: TFile): boolean {
         return ['md', 'canvas', 'pdf', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'avif', 'bmp', 'svg', 'mp3', 'm4a', 'wav', 'ogg', 'flac', 'mp4', 'webm', 'mov'].includes(file.extension.toLowerCase());
     }
-    private electronShell(): { openPath(path: string): Promise<string>; showItemInFolder(path: string): void } | undefined {
+    private electronShell(): { openPath?: (path: string) => Promise<string>; showItemInFolder?: (path: string) => void } | undefined {
         try {
             const candidate = (window as Window & { require?: (module: string) => { shell?: unknown } }).require?.('electron')?.shell;
-            return candidate && typeof (candidate as { openPath?: unknown }).openPath === 'function'
-                ? candidate as { openPath(path: string): Promise<string>; showItemInFolder(path: string): void }
+            const shell = candidate as { openPath?: unknown; showItemInFolder?: unknown } | undefined;
+            return shell && (typeof shell.openPath === 'function' || typeof shell.showItemInFolder === 'function')
+                ? shell as { openPath?: (path: string) => Promise<string>; showItemInFolder?: (path: string) => void }
                 : undefined;
         } catch { return undefined; }
     }
@@ -69,19 +70,28 @@ export class ObsidianVaultIO implements VaultIO {
             return;
         }
         const shell = this.electronShell();
-        if (!shell) throw new Error('Opening this file externally requires Obsidian desktop');
+        if (!shell?.openPath) throw new Error('Opening this file externally requires Obsidian desktop');
         const failure = await shell.openPath(this.absolute(path));
         if (failure) throw new Error(failure);
     }
-    reveal(path: string): void {
+    async reveal(path: string): Promise<void> {
         const shell = this.electronShell();
-        if (!shell) throw new Error('Revealing a file requires Obsidian desktop');
-        shell.showItemInFolder(this.absolute(path));
+        const absolute = this.absolute(path);
+        // Opening the parent directory is much faster on macOS than asking
+        // Finder to reveal and select one file. It also avoids Windows'
+        // legacy Explorer /select, parsing entirely.
+        if (shell?.openPath) {
+            const failure = await shell.openPath(containingFolder(absolute));
+            if (failure) throw new Error(failure);
+            return;
+        }
+        if (!shell?.showItemInFolder) throw new Error('Revealing a file requires Obsidian desktop');
+        shell.showItemInFolder(absolute);
     }
     absolute(path: string): string {
         this.file(path);
         const adapter = this.app.vault.adapter;
-        if (!(adapter instanceof FileSystemAdapter)) throw new Error('Native file clipboard requires a local filesystem Vault');
+        if (!(adapter instanceof FileSystemAdapter)) throw new Error('This action requires a local filesystem Vault');
         return adapter.getFullPath(safeRelative(path));
     }
 }

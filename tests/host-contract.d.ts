@@ -15,7 +15,7 @@ declare module 'obsidian' {
   on(event:string,callback:(...args:unknown[])=>void):EventRef;
  }
  export class WorkspaceLeaf {view:ItemView;openFile(file:TFile):Promise<void>;setViewState(state:{type:string;active:boolean}):Promise<void>}
- export class App {vault:Vault;fileManager:{processFrontMatter(file:TFile,fn:(fm:Record<string,unknown>)=>void):Promise<void>;generateMarkdownLink(file:TFile,from:string,subpath?:string,alias?:string):string;renameFile(file:TFile,newPath:string):Promise<void>};metadataCache:{getFirstLinkpathDest(link:string,from:string):TFile|null};workspace:{getLeavesOfType(type:string):WorkspaceLeaf[];getLeaf(newLeaf?:boolean|'tab'):WorkspaceLeaf;revealLeaf(leaf:WorkspaceLeaf):Promise<void>}}
+ export class App {vault:Vault;fileManager:{processFrontMatter(file:TFile,fn:(fm:Record<string,unknown>)=>void):Promise<void>;generateMarkdownLink(file:TFile,from:string,subpath?:string,alias?:string):string;renameFile(file:TFile,newPath:string):Promise<void>};metadataCache:{getFirstLinkpathDest(link:string,from:string):TFile|null};workspace:{getLeavesOfType(type:string):WorkspaceLeaf[];getActiveViewOfType<T extends ItemView>(type:new(...args:any[])=>T):T|null;getLeaf(newLeaf?:boolean|'tab'):WorkspaceLeaf;revealLeaf(leaf:WorkspaceLeaf):Promise<void>}}
  export function parseYaml(text:string):unknown;
  export class Notice {constructor(message:string,duration?:number)}
  export class ItemView {app:App;contentEl:HTMLElement;constructor(leaf:WorkspaceLeaf);onOpen():Promise<void>;onClose():Promise<void>}

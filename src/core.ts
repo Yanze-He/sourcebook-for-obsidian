@@ -6,7 +6,6 @@ export const PROJECT_NOTES_DIR = `${ROOT}/Project Notes`;
 export const ASSETS_DIR = `${ROOT}/Assets`;
 export const DATA_DIR = `${ROOT}/_data`;
 export const REGISTRY_PATH = `${DATA_DIR}/library.json`;
-export const MAX_IMPORT_BYTES = 25 * 1024 * 1024;
 export const MAX_PACK_BYTES = 100 * 1024 * 1024;
 
 export const ACTIVE_START = '<!-- sourcebook:active:start -->';
@@ -152,6 +151,15 @@ export function safeName(value: string): string {
     let s = [...value.normalize('NFC')].map(char => char.codePointAt(0)! <= 31 || forbidden.includes(char) ? '-' : char).join('').replace(/[. ]+$/g, '').replace(/^[. ]+/g, '').slice(0, 100);
     if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(s)) s = `_${s}`;
     return s || 'untitled';
+}
+
+/** Cross-platform parent path for an already validated local file path. */
+export function containingFolder(path: string): string {
+    const separator = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
+    if (separator < 0) return path;
+    if (/^[A-Za-z]:[\\/]/.test(path) && separator === 2) return path.slice(0, 3);
+    if (separator === 0) return path.slice(0, 1);
+    return path.slice(0, separator);
 }
 
 export function safeRelative(path: string): string {

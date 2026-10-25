@@ -91,6 +91,85 @@ export class ConfirmModal extends Modal {
     onClose(): void { this.contentEl.replaceChildren(); }
 }
 
+export type PasteImportItem = {
+    id: string;
+    title: string;
+    detail: string;
+    kind: 'file' | 'link' | 'text' | 'unsupported';
+    modality: 'file' | 'image' | 'video' | 'audio' | 'link' | 'text';
+    status: 'pending' | 'importing' | 'imported' | 'unsupported' | 'failed';
+    reason?: string;
+    file?: File;
+    value?: string;
+};
+
+/**
+ * A deliberate review step for Cmd/Ctrl+V.  Clipboard data is never saved
+ * until the person confirms this modal.
+ */
+export class PasteImportModal extends Modal {
+    private busy = false;
+    constructor(
+        app: App,
+        private language: Language,
+        private items: PasteImportItem[],
+        private hiddenCount: number,
+        private bookName: string,
+        private submit: (items: PasteImportItem[], update: (id: string, change: Partial<PasteImportItem>) => void) => Promise<void>
+    ) { super(app); }
+    onOpen(): void {
+        this.modalEl?.classList.add('sb-modal-shell');
+        this.contentEl.classList.add('sb-modal', 'sb-paste-modal');
+        this.renderContents(true);
+    }
+    private renderContents(focusConfirm = false): void {
+        this.contentEl.replaceChildren();
+        const header = el(this.contentEl, 'header', '', 'sb-modal-head');
+        el(header, 'h2', label(this.language, '粘贴到 Book', 'Paste to Book'));
+        el(header, 'small', this.bookName, 'sb-paste-book-name');
+        const body = el(this.contentEl, 'div', '', 'sb-modal-body');
+        const heading = el(body, 'div', '', 'sb-paste-import-heading');
+        el(heading, 'strong', label(this.language, '本次内容', 'Pasted content'));
+        el(heading, 'span', String(this.items.length + this.hiddenCount));
+        const list = el(body, 'ul', '', 'sb-paste-import-list');
+        for (const item of this.items) {
+            const row = el(list, 'li', '', `is-${item.modality} is-${item.status}`);
+            const kind = el(row, 'span', '', 'sb-paste-import-kind');
+            setIcon(kind, item.modality === 'image' ? 'image' : item.modality === 'video' ? 'video' : item.modality === 'audio' ? 'music-2' : item.modality === 'link' ? 'link' : item.modality === 'text' ? 'align-left' : 'file-text');
+            const content = el(row, 'span', '', 'sb-paste-import-content');
+            el(content, 'strong', item.title);
+            el(content, 'small', item.status === 'imported' ? label(this.language, '已添加', 'Added') : item.status === 'importing' ? label(this.language, '正在添加…', 'Adding…') : item.reason || item.detail);
+            if (item.status !== 'pending') {
+                const state = el(row, 'span', '', 'sb-paste-import-status');
+                setIcon(state, item.status === 'importing' ? 'loader-circle' : item.status === 'imported' ? 'circle-check' : 'circle-x');
+            }
+        }
+        if (this.hiddenCount) el(body, 'p', label(this.language, `还有 ${this.hiddenCount} 项未显示：单次最多添加 20 项。`, `${this.hiddenCount} more item${this.hiddenCount === 1 ? ' is' : 's are'} not shown. Paste up to 20 items at a time.`), 'sb-paste-import-limit');
+        const footer = el(this.contentEl, 'footer', '', 'sb-modal-footer');
+        const cancel = action(footer, label(this.language, '取消', 'Cancel'), async () => { this.close(); });
+        cancel.disabled = this.busy;
+        const pending = this.items.filter(item => item.status === 'pending').length;
+        const confirm = action(footer, this.busy ? label(this.language, '正在添加…', 'Adding…') : pending ? label(this.language, `添加 ${pending} 项`, `Add ${pending} item${pending === 1 ? '' : 's'}`) : label(this.language, '无可添加项', 'Nothing to add'), async () => { await this.importPending(); }, 'mod-cta');
+        confirm.disabled = this.busy || !pending;
+        if (focusConfirm && pending) confirm.focus();
+    }
+    private async importPending(): Promise<void> {
+        if (this.busy || !this.items.some(item => item.status === 'pending')) return;
+        this.busy = true;
+        this.renderContents();
+        try {
+            await this.submit(this.items, (id, change) => {
+                this.items = this.items.map(item => item.id === id ? { ...item, ...change } : item);
+                this.renderContents();
+            });
+        } finally {
+            this.busy = false;
+            this.renderContents();
+        }
+    }
+    onClose(): void { this.contentEl.replaceChildren(); }
+}
+
 export class PickerPairingModal extends Modal {
     private statusTimer?: number;
     constructor(app: App, private code: string, private connected: boolean, private refreshCode: () => Promise<string>, private disconnect: () => Promise<void>, private isConnected: () => boolean | Promise<boolean>, private language: Language) { super(app); }

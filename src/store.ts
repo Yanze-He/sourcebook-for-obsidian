@@ -1,6 +1,6 @@
 import {
     ASSETS_DIR, Book, BOOKS_DIR, DATA_DIR, emptyRegistry, Entry, entryId, id, Library,
-    MaterialMetadata, MAX_IMPORT_BYTES, newBookBody, PickerMetadata, plainTitle, parseRegistry, PROJECT_NOTES_DIR, REGISTRY_PATH, Resolved, ROOT, safeName,
+    MaterialMetadata, newBookBody, PickerMetadata, plainTitle, parseRegistry, PROJECT_NOTES_DIR, REGISTRY_PATH, Resolved, ROOT, safeName,
     safeRelative, SCHEMA, serialize, SerialQueue, titleFromPath, VaultIO, webUrl, decodeBook, rewriteBookBody,
     kindFor, message, DocumentLanguage
 } from './core';
@@ -203,7 +203,6 @@ export class SourcebookStore {
 
     async importFile(book: Book, name: string, bytes: ArrayBuffer, language: DocumentLanguage = book.language, metadata: Pick<MaterialMetadata, 'sourceUrl' | 'sourceTitle' | 'capturedAt' | 'captureMethod'> = {}, picker?: PickerMetadata): Promise<Entry> {
         return this.queue.run(async () => {
-            if (bytes.byteLength > MAX_IMPORT_BYTES) throw new Error('Import limit is 25 MB; place larger files in the Vault, then reference them');
             if (!bytes.byteLength) throw new Error('Empty file');
             await this.folders();
             const hash = await this.sha256(bytes);

@@ -32,7 +32,7 @@ const app={vault,metadataCache:{getFirstLinkpathDest:(target,from)=>fileMap.get(
  processFrontMatter:async(f,fn)=>{const text=decode(f.bytes),m=text.match(/^---\n([\s\S]*?)\n---\n/),meta=m?parseYaml(m[1]):{};fn(meta);const body=m?text.slice(m[0].length):text;const next='---\n'+Object.entries(meta).map(([k,v])=>k+': '+JSON.stringify(v)).join('\n')+'\n---\n'+body;f.bytes=encode(next);f.stat.size=f.bytes.length;emit('modify',f);},
  renameFile:async(f,newPath)=>{if(fileMap.has(newPath))throw Error('Already exists');const old=f.path;fileMap.delete(old);f.path=newPath;f.name=newPath.split('/').pop();f.basename=f.name.replace(/\.[^.]+$/,'');f.extension=f.name.split('.').pop();fileMap.set(newPath,f);emit('rename',f,old);},
  generateMarkdownLink:(f,from,subpath,alias)=>`[[${f.path}${subpath||''}${alias?'|'+alias.replace(/[\[\]|]/g,'-'):''}]]`
-},workspace:{getLeavesOfType:t=>leaves.filter(l=>l.type===t),getLeaf:()=>{const l=new WorkspaceLeaf(app);leaves.push(l);return l;},revealLeaf:async()=>{}}};
+},workspace:{getLeavesOfType:t=>leaves.filter(l=>l.type===t),getActiveViewOfType:t=>leaves.map(l=>l.view).find(view=>view instanceof t)||null,getLeaf:()=>{const l=new WorkspaceLeaf(app);leaves.push(l);return l;},revealLeaf:async()=>{}}};
 class ItemView{constructor(leaf){this.app=leaf.app;this.contentEl=document.createElement('div');}}
 class Modal{constructor(app){this.app=app;this.contentEl=document.createElement('section');this.contentEl.classList.add('modal');this.overlay=document.createElement('div');this.overlay.className='harness-overlay';this.overlay.append(this.contentEl);}open(){document.body.append(this.overlay);this.onOpen();const close=document.createElement('button');close.className='harness-close';close.setAttribute('aria-label','Close modal');close.innerHTML='<svg aria-hidden="true" fill="none" height="16" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>';close.onclick=()=>this.close();this.contentEl.prepend(close);}close(){this.onClose();this.overlay.remove();}onOpen(){}onClose(){}}
 class FuzzySuggestModal extends Modal{onOpen(){const input=document.createElement('input');input.placeholder='Select a file';this.contentEl.append(input);const list=document.createElement('div');this.contentEl.append(list);const draw=()=>{list.replaceChildren();for(const item of this.getItems().filter(i=>this.getItemText(i).includes(input.value))){const b=document.createElement('button');b.textContent=this.getItemText(item);b.onclick=()=>{this.onChooseItem(item);this.close();};list.append(b);}};input.oninput=draw;draw();}}
@@ -48,8 +48,10 @@ class Setting{constructor(){}setName(){return this;}setDesc(){return this;}addDr
 class PluginSettingTab{constructor(app,plugin){this.app=app;this.plugin=plugin;this.containerEl=document.createElement('div');}}
 class Plugin{constructor(app){this.app=app;this.cleanups=[];}async loadData(){return {language:'en',bookId:'',nativeClipboard:false,favoriteEntries:[]};}async saveData(d){this.saved=d;}registerView(type,fn){registry.set(type,fn);}addRibbonIcon(){}addCommand(){}addSettingTab(){}registerEvent(ref){this.cleanups.push(()=>{events.set(ref.event,events.get(ref.event).filter(fn=>fn!==ref.fn));});}register(fn){this.cleanups.push(fn);}}
 const host={TAbstractFile,TFile,TFolder,FileSystemAdapter,parseYaml,ItemView,Modal,FuzzySuggestModal,Notice,Setting,PluginSettingTab,Plugin,setIcon};
-window.require=spec=>{if(spec==='obsidian')return host;throw Error('Unexpected host require '+spec);};
+const revealedPaths=[];
+const electron={shell:{openPath:async path=>{revealedPaths.push(path);return '';},showItemInFolder:path=>{revealedPaths.push('select:'+path);}}};
+window.require=spec=>{if(spec==='obsidian')return host;if(spec==='electron')return electron;throw Error('Unexpected host require '+spec);};
 window.module={exports:{}};
 const copiedFiles=[];
 window.__sourcebookCopyFiles=async(paths,texts)=>{copiedFiles.splice(0,copiedFiles.length,...paths,...texts.map(file=>`virtual://${file.name}`));};
-window.__host={app,fileMap,folderMap,leaves,notices,opened,events,copiedFiles};
+window.__host={app,fileMap,folderMap,leaves,notices,opened,events,copiedFiles,revealedPaths};

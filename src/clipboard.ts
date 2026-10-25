@@ -4,6 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 export interface ClipboardTextFile { name: string; text: string; }
 type BrowserFileClipboardBridge = (paths: string[], texts: ClipboardTextFile[]) => Promise<void> | void;
+type ElectronFileClipboard = {
+    clipboard: { write(items: unknown[]): Promise<void> | void };
+    ClipboardItem: new (items: Record<'text/uri-list', string>) => unknown;
+};
 
 /** The browser harness has a virtual Vault, so it supplies a test-only file clipboard bridge. */
 function browserFileClipboardBridge(): BrowserFileClipboardBridge | undefined {
@@ -12,8 +16,26 @@ function browserFileClipboardBridge(): BrowserFileClipboardBridge | undefined {
     return typeof candidate === 'function' ? candidate as BrowserFileClipboardBridge : undefined;
 }
 
+/**
+ * Modern Electron maps text/uri-list to native copied-file data on macOS and
+ * Windows. It is used only for validated Vault paths supplied by a deliberate
+ * copy action, never for clipboard content received from a page.
+ */
+function electronFileClipboard(): ElectronFileClipboard | undefined {
+    if (typeof window === 'undefined') return undefined;
+    try {
+        const candidate = (window as Window & { require?: (module: string) => unknown }).require?.('electron') as Partial<ElectronFileClipboard> | undefined;
+        return candidate
+            && candidate.clipboard
+            && typeof candidate.clipboard.write === 'function'
+            && typeof candidate.ClipboardItem === 'function'
+            ? candidate as ElectronFileClipboard
+            : undefined;
+    } catch { return undefined; }
+}
+
 export function fileClipboardPlatform(): boolean {
-    return Boolean(browserFileClipboardBridge()) || Boolean(
+    return Boolean(browserFileClipboardBridge()) || Boolean(electronFileClipboard()) || Boolean(
         typeof navigator !== 'undefined' && navigator.clipboard && typeof ClipboardItem !== 'undefined'
     );
 }
@@ -45,6 +67,16 @@ export async function copyFiles(paths: string[]): Promise<void> {
     const bridge = browserFileClipboardBridge();
     if (bridge) { await bridge(paths, []); return; }
     validatePaths(paths);
+    const nativeClipboard = electronFileClipboard();
+    if (nativeClipboard) {
+        try {
+            const uris = paths.map(fileUri).join('\r\n');
+            await nativeClipboard.clipboard.write([new nativeClipboard.ClipboardItem({ 'text/uri-list': uris })]);
+            return;
+        } catch {
+            throw new Error('Native file clipboard access was denied');
+        }
+    }
     if (!fileClipboardPlatform()) throw new Error('File clipboard requires a current Obsidian desktop version');
     try {
         const uris = paths.map(fileUri).join('\r\n');

@@ -38,6 +38,18 @@ your project note stays ordinary, editable Markdown.
 Existing Vault files keep one authoritative copy; removing an item from a Book
 never deletes its source file.
 
+## Three ways to add material
+
+1. **Use the Add menu.** Choose **Add Vault file** for an existing Vault file,
+   **Import local file** for a file on your computer, or add short text and a
+   note directly.
+2. **Paste from the clipboard.** With the Sourcebook surface active, press
+   Cmd/Ctrl+V to review files, public links, or short text before adding them.
+   Unsupported content is explained, and nothing is written until you confirm.
+3. **Collect with Picker.** Pair the optional Sourcebook Picker browser
+   extension to bring material from the web into the current Book while you
+   browse.
+
 ## Give AI the context it actually needs
 
 <img width="1280" height="800" alt="你的段落文字 (4)" src="https://github.com/user-attachments/assets/3153dcb0-ff89-4b2d-885e-63605a65db48" />
@@ -125,13 +137,17 @@ pairing.
 
 - Sourcebook lists Vault files only when you open the **Add Vault file** picker;
   it excludes Sourcebook-managed and already-managed files from that choice.
-- Clipboard access is used only after you press a copy action. Sourcebook never
-  reads your clipboard.
+- Clipboard access is used only after an explicit action: pressing a copy
+  action, or pressing Cmd/Ctrl+V on the Sourcebook surface. A paste is shown
+  for review and is not written to the Vault until you confirm it. The review
+  shows up to 20 items, explains unsupported items such as folders, and keeps
+  per-item success or error results visible after import. Sourcebook never
+  performs background clipboard reads.
 - **Copy files for AI** is an explicit desktop-only action. It writes validated
-  local file URIs to the system clipboard so selected files can be pasted into
-  an agent; Sourcebook never invokes a shell command. Short text selected for
-  that action is written as a temporary `.txt` file under the operating
-  system's temporary directory.
+  local file URIs to the native system clipboard so selected files can be
+  pasted into an agent; Sourcebook never invokes a shell command. Short text
+  selected for that action is written as a temporary `.txt` file under the
+  operating system's temporary directory.
 - Deleting a managed Book or imported asset uses Obsidian's configured trash
   behavior. Removing a material from a Book only unlinks it and preserves its
   original Vault file.

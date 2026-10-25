@@ -4,6 +4,25 @@ All notable changes to Sourcebook for Obsidian are documented here.
 
 ## 0.2.4
 
+- Improve the selected Picker menu item's icon contrast, restore the batch
+  selection entry icon's intended size, and make the pairing-code refresh
+  control a borderless icon button.
+- Add a reviewed Cmd/Ctrl+V import flow for files, public web links, and short
+  text pasted onto the Sourcebook surface. It shows the first 20 items,
+  explains unsupported items, and retains per-item import results. Normal
+  editor and form pasting is unchanged; nothing is saved until confirmed.
+- Add a visible **Show in folder** action for local materials. It uses
+  Electron to open the containing directory directly, rather than asking
+  Finder or File Explorer to select one file.
+- Remove the application-level file import size cap. Imports are now bounded
+  only by available local memory and Vault storage.
+- Use Electron's native copied-file clipboard format for the explicit **Copy
+  files** action, avoiding renderer clipboard permission failures on macOS and
+  Windows.
+- Move **Show in folder** from the detail footer to the local file's **Path**
+  field. The action now remains available when only Electron's reveal API is
+  exposed by the host.
+
 - Address additional Community Plugins review findings: remove shell execution,
   use Obsidian UI helpers, eliminate forced CSS overrides, and make settings
   searchable in Obsidian 1.13+.

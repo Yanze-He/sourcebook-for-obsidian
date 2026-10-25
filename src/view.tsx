@@ -1,11 +1,11 @@
 import { ItemView, WorkspaceLeaf, Notice } from 'obsidian';
 import type SourcebookPlugin from './main';
 import {
-    Book, Entry, Resolved, Library, ROOT, canPreviewImage, humanSize,
-    message, searchText, MAX_IMPORT_BYTES, Kind
+    Book, Entry, Resolved, Library, ROOT, canPreviewImage, humanSize, kindFor,
+    message, searchText, Kind
 } from './core';
 import { planPack, promptFor, attachmentPaths, handoffFileCount, handoffTextFileName, PackPlan } from './pack';
-import { FormModal, FilePicker, ConfirmModal, PickerPairingModal, label } from './ui';
+import { FormModal, FilePicker, ConfirmModal, PasteImportItem, PasteImportModal, PickerPairingModal, label } from './ui';
 import { copyFiles, copyFilesWithText, copyText, fileClipboardPlatform } from './clipboard';
 import { Fragment, h, render } from './jsx';
 import { Icon, IconName, SourcebookMark } from './icons';
@@ -16,6 +16,7 @@ type Density = 'compact' | 'standard' | 'spacious';
 type DateFilter = 'all' | 'today' | 'yesterday' | 'week';
 type LocalFilter = 'all' | 'local' | 'none' | 'missing';
 type Toast = { text: string; type: 'success' | 'error' };
+type ClipboardImportPlan = { items: PasteImportItem[]; hiddenCount: number };
 
 type DetailRow = { label: string; value: string; reveal?: string };
 
@@ -149,6 +150,7 @@ export class SourcebookView extends ItemView {
     private mediaDurations = new Map<string, number>();
     private masonryColumns = 1;
     private resizeObserver?: ResizeObserver;
+    private pasteDocument?: Document;
 
     constructor(leaf: WorkspaceLeaf, readonly plugin: SourcebookPlugin) { super(leaf); }
     getViewType(): string { return VIEW_TYPE; }
@@ -168,6 +170,8 @@ export class SourcebookView extends ItemView {
             });
             this.resizeObserver.observe(this.contentEl);
         }
+        this.pasteDocument = this.contentEl.ownerDocument;
+        this.pasteDocument.addEventListener('paste', this.onDocumentPaste, true);
         await this.reload();
     }
 
@@ -175,6 +179,8 @@ export class SourcebookView extends ItemView {
         this.refreshId++;
         this.unsubscribe?.();
         this.resizeObserver?.disconnect();
+        this.pasteDocument?.removeEventListener('paste', this.onDocumentPaste, true);
+        this.pasteDocument = undefined;
         if (this.toastTimer) window.clearTimeout(this.toastTimer);
         this.contentEl.replaceChildren();
     }
@@ -534,7 +540,7 @@ export class SourcebookView extends ItemView {
     }
 
     private renderBatchActions(visible: Resolved[]): JSX.Element {
-        if (!this.selectionMode) return <div className="selection-entry-actions"><button aria-label={this.t('批量操作', 'Batch actions')} className="batch-actions-fab batch-actions-entry is-collapsed" onClick={() => this.startBatchSelection()} type="button"><Icon name="list" size={16}/></button><button className="batch-actions-fab is-collapsed handoff-entry" onClick={() => this.startHandoffSelection()} type="button"><Icon name="send" size={16}/><span className="batch-actions-label">{this.t('发送给 AI', 'Send to AI')}</span></button></div>;
+        if (!this.selectionMode) return <div className="selection-entry-actions"><button aria-label={this.t('批量操作', 'Batch actions')} className="batch-actions-fab batch-actions-entry is-collapsed" onClick={() => this.startBatchSelection()} type="button"><Icon name="list" size={20}/></button><button className="batch-actions-fab is-collapsed handoff-entry" onClick={() => this.startHandoffSelection()} type="button"><Icon name="send" size={16}/><span className="batch-actions-label">{this.t('发送给 AI', 'Send to AI')}</span></button></div>;
         const summary = this.renderSelectionSummary(visible);
         if (this.selectionIntent === 'handoff') return <div className="batch-actions-fab handoff-selection-bar is-expanded">{summary}<button className="is-primary batch-send-ai" disabled={!this.selected.size} onClick={() => this.openHandoffFromSources()} type="button"><Icon name="arrow-left-right" size={16}/>{this.t('继续', 'Continue')}</button><button aria-label={this.t('取消发送素材', 'Cancel sending sources')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
         if (!this.selected.size) return <div className="batch-actions-fab">{summary}<button aria-label={this.t('关闭批量操作', 'Close batch actions')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
@@ -551,7 +557,7 @@ export class SourcebookView extends ItemView {
             { label: this.t('格式', 'Format'), value: item.kind },
             ...(['video', 'audio'].includes(item.kind) ? [{ label: this.t('时长', 'Duration'), value: formatDuration(duration || NaN) || '—' }] : []),
             { label: this.t('大小', 'Size'), value: item.filePath ? humanSize(item.fileSize) : '—' },
-            { label: this.t('位置', 'Path'), value: item.filePath || item.bookPath }
+            { label: this.t('位置', 'Path'), value: item.filePath || item.bookPath, ...(item.filePath ? { reveal: item.filePath } : {}) }
         ];
         const noteDraft = this.detailNoteDrafts.get(item.entry.id) ?? item.entry.note;
         const textDraft = this.detailTextDrafts.get(item.entry.id) ?? item.body;
@@ -690,7 +696,7 @@ export class SourcebookView extends ItemView {
             void (async () => {
                 const files = Array.from(input.files || []); let count = 0; const errors: string[] = [];
                 for (const file of files) {
-                    try { if (file.size > MAX_IMPORT_BYTES) throw new Error('25 MB maximum'); await this.plugin.store.importFile(book, file.name, await file.arrayBuffer(), this.plugin.settings.language); count++; }
+                    try { await this.plugin.store.importFile(book, file.name, await file.arrayBuffer(), this.plugin.settings.language); count++; }
                     catch (error) { errors.push(`${file.name}: ${message(error)}`); }
                 }
                 this.notify(this.t(`已导入或复用 ${count} 个文件`, `Imported or reused ${count} files`));
@@ -699,6 +705,119 @@ export class SourcebookView extends ItemView {
             })().catch(error => this.notify(message(error), 'error'));
         }, { once: true });
         input.click();
+    }
+
+    /**
+     * Sourcebook only handles a paste that begins on its own surface. Inputs
+     * and editors keep their normal Cmd/Ctrl+V behaviour.
+     */
+    private readonly onDocumentPaste = (event: ClipboardEvent): void => {
+        const target = event.target instanceof Element ? event.target : undefined;
+        if (!this.book || !target || !this.isActiveSourcebookView() || this.isPasteBlockedTarget(target)) return;
+        const clipboard = event.clipboardData;
+        if (!clipboard) return;
+        event.preventDefault();
+        const book = this.book;
+        const plan = this.clipboardImportPlan(clipboard);
+        new PasteImportModal(this.app, this.plugin.settings.language, plan.items, plan.hiddenCount, book.title, async (items, update) => {
+            await this.importClipboardPlan(book, items, update);
+        }).open();
+    };
+
+    private isActiveSourcebookView(): boolean {
+        return this.app.workspace.getActiveViewOfType(SourcebookView) === this;
+    }
+
+    private isPasteBlockedTarget(target: Element): boolean {
+        return Boolean(target.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], .modal, .suggestion-container, .menu'));
+    }
+
+    private clipboardImportPlan(clipboard: DataTransfer): ClipboardImportPlan {
+        const fileItems: PasteImportItem[] = [];
+        let sawFileItem = false;
+        for (const item of Array.from(clipboard.items)) {
+            if (item.kind !== 'file') continue;
+            sawFileItem = true;
+            const entry = (item as DataTransferItem & { webkitGetAsEntry?: () => { isDirectory: boolean; name: string } | null }).webkitGetAsEntry?.();
+            if (entry?.isDirectory) {
+                fileItems.push(this.unsupportedClipboardItem(entry.name || this.t('文件夹', 'Folder'), this.t('文件夹暂不支持导入。请选择其中的文件。', 'Folders cannot be imported. Select the files inside instead.')));
+                continue;
+            }
+            const file = item.getAsFile();
+            if (!file) {
+                fileItems.push(this.unsupportedClipboardItem(this.t('粘贴的文件', 'Pasted file'), this.t('此文件已不可读取，已跳过。', 'This file is no longer readable and was skipped.')));
+                continue;
+            }
+            fileItems.push(this.clipboardFileItem(file));
+        }
+        if (!sawFileItem) for (const file of Array.from(clipboard.files || [])) fileItems.push(this.clipboardFileItem(file));
+        if (!fileItems.length && Array.from(clipboard.types).includes('Files')) {
+            fileItems.push(this.unsupportedClipboardItem(this.t('本机文件剪贴板', 'Local file clipboard'), this.t('Obsidian 未能读取这些文件；请使用“导入本地文件”。', 'Obsidian could not read these files. Use Import local files instead.')));
+        }
+        const plain = clipboard.getData('text/plain').trim();
+        const uriList = clipboard.getData('text/uri-list');
+        const uriLinks = uriList.split(/\r?\n/).map(value => value.trim()).filter(value => value && !value.startsWith('#') && this.isPublicUrl(value));
+        const plainLinks = plain.split(/\s+/).map(value => value.trim()).filter(value => this.isPublicUrl(value));
+        const onlyLinks = Boolean(plain) && plain.split(/\s+/).filter(Boolean).length === plainLinks.length;
+        const links = [...new Set(uriLinks.length ? uriLinks : onlyLinks ? plainLinks : [])];
+        const text = links.length && onlyLinks ? '' : plain || this.clipboardHtmlToText(clipboard.getData('text/html'));
+        const content: PasteImportItem[] = [
+            ...fileItems,
+            ...links.map(url => this.clipboardItem('link', 'link', domainFor(url) || url, url, url)),
+            ...(text ? [text.length > 20_000
+                ? this.unsupportedClipboardItem(this.t('文字', 'Text'), this.t('文字超过 20,000 字，无法导入。', 'Text exceeds 20,000 characters and cannot be imported.'), 'text')
+                : this.clipboardItem('text', 'text', this.t('文字', 'Text'), this.t(`将作为一条文字素材保存：${this.previewClipboardText(text)}`, `Saved as one text source: ${this.previewClipboardText(text)}`), text)] : []),
+            ...Array.from(clipboard.types).filter(type => !['Files', 'text/plain', 'text/html', 'text/uri-list'].includes(type)).map(type => this.unsupportedClipboardItem(type, this.t('此剪贴板格式暂不支持导入。', 'This clipboard format is not supported.')))
+        ];
+        if (!content.length) content.push(this.unsupportedClipboardItem(this.t('剪贴板内容', 'Clipboard content'), this.t('没有识别到可导入的内容。', 'No importable content was found.')));
+        return { items: content.slice(0, 20), hiddenCount: Math.max(0, content.length - 20) };
+    }
+
+    private clipboardItem(kind: PasteImportItem['kind'], modality: PasteImportItem['modality'], title: string, detail: string, value?: string, file?: File): PasteImportItem {
+        return { id: crypto.randomUUID(), kind, modality, title, detail, status: 'pending', value, file };
+    }
+
+    private unsupportedClipboardItem(title: string, reason: string, modality: PasteImportItem['modality'] = 'file'): PasteImportItem {
+        return { id: crypto.randomUUID(), kind: 'unsupported', modality, title, detail: this.t('不支持', 'Unsupported'), status: 'unsupported', reason };
+    }
+
+    private clipboardFileItem(file: File): PasteImportItem {
+        const modality = kindFor(file.name || '').replace('note', 'file') as PasteImportItem['modality'];
+        return this.clipboardItem('file', modality, file.name || this.t('粘贴的文件', 'Pasted file'), `${kindLabel(modality as Kind, this.plugin.settings.language)} · ${humanSize(file.size)}`, undefined, file);
+    }
+
+    private isPublicUrl(value: string): boolean {
+        try { const url = new URL(value); return url.protocol === 'http:' || url.protocol === 'https:'; } catch { return false; }
+    }
+
+    private clipboardHtmlToText(html: string): string {
+        if (!html.trim()) return '';
+        const document = new DOMParser().parseFromString(html, 'text/html');
+        return (document.body.textContent || '').replace(/\u00a0/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+    }
+
+    private previewClipboardText(value: string): string {
+        const compact = value.replace(/\s+/g, ' ').trim();
+        return compact.length > 96 ? `${compact.slice(0, 96)}…` : compact;
+    }
+
+    private async importClipboardPlan(book: Book, items: PasteImportItem[], update: (id: string, change: Partial<PasteImportItem>) => void): Promise<void> {
+        let count = 0;
+        for (const item of items.filter(candidate => candidate.status === 'pending')) {
+            update(item.id, { status: 'importing', reason: undefined });
+            try {
+                if (item.kind === 'file' && item.file) await this.plugin.store.importFile(book, item.file.name, await item.file.arrayBuffer(), this.plugin.settings.language);
+                else if (item.kind === 'link' && item.value) await this.plugin.store.addLink(book, domainFor(item.value) || item.value, item.value, this.plugin.settings.language);
+                else if (item.kind === 'text' && item.value) await this.plugin.store.addText(book, '', item.value, '', this.plugin.settings.language);
+                else throw new Error('Clipboard item is no longer available');
+                count++;
+                update(item.id, { status: 'imported', reason: undefined });
+            } catch (error) {
+                update(item.id, { status: 'failed', reason: this.t(`导入未完成：${message(error)}`, `Import did not finish: ${message(error)}`) });
+            }
+        }
+        if (count) await this.reload();
+        if (count) this.notify(this.t(`已添加 ${count} 项到当前 Book`, `Added ${count} item${count === 1 ? '' : 's'} to this Book`));
     }
 
     private addText(): void {
@@ -795,8 +914,8 @@ export class SourcebookView extends ItemView {
         catch (error) { this.notify(message(error), 'error'); }
     }
 
-    private revealOriginal(path: string): void {
-        try { this.plugin.io.reveal(path); }
+    private async revealOriginal(path: string): Promise<void> {
+        try { await this.plugin.io.reveal(path); }
         catch (error) { this.notify(message(error), 'error'); }
     }
 

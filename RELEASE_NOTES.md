@@ -13,6 +13,8 @@ and supported AI conversations together in project-based Books.
 - Create visual Books for a project, client, film, deck, or creative direction.
 - Preserve source links and add Book-specific context for every material.
 - Add materials to normal Obsidian notes using native links and embeds.
+- Add material in three ways: the Add menu, reviewed clipboard pasting, or the
+  optional paired Sourcebook Picker browser extension.
 - Select materials and copy a focused AI-ready context with the associated
   creative notes.
 - Optionally pair the local Sourcebook Picker browser extension to collect
@@ -33,6 +35,13 @@ in `<your-vault>/.obsidian/plugins/sourcebook/`, then enable Sourcebook in
 - File attachment copy is available only after an explicit user action. It uses
   the system clipboard and creates short-lived text attachments only when a
   selected text record needs to be pasted as a file.
+- Cmd/Ctrl+V on the Sourcebook surface can prepare files, public links, or
+  short text for import. It presents the first 20 items for review, labels
+  unsupported items, and writes nothing until the user confirms.
+- Local file imports no longer impose a 25 MB application limit. Copying files
+  for AI uses Electron's native file clipboard format on macOS and Windows.
+- **Show in folder** is attached to the local file's Path field in its detail
+  view and directly opens its containing folder for a faster Finder response.
 
 ## Verification
 
