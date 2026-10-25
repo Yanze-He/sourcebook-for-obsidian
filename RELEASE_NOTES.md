@@ -1,4 +1,4 @@
-# Sourcebook 0.2.4
+# Sourcebook 0.2.5
 
 Sourcebook is a local-first material and note workspace for creative projects.
 It keeps existing Vault files, media, web captures, links, posts, short text,

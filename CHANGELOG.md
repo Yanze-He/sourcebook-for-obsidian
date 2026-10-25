@@ -2,7 +2,7 @@
 
 All notable changes to Sourcebook for Obsidian are documented here.
 
-## 0.2.4
+## 0.2.5
 
 - Improve the selected Picker menu item's icon contrast, restore the batch
   selection entry icon's intended size, and make the pairing-code refresh
