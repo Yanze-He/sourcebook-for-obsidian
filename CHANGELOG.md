@@ -2,6 +2,27 @@
 
 All notable changes to Sourcebook for Obsidian are documented here.
 
+## 0.2.11
+
+- Add **Move to another Book** to the multi-selection **More** menu. Select a
+  destination Book, then choose whether to copy or move the selected Book
+  memberships. Original Vault files stay in place and are never duplicated.
+- Keep the bottom batch-selection entry at a fixed 42×42 target with a
+  non-shrinking 20px list icon, so it remains legible beside **Send to AI**.
+
+## 0.2.10
+
+- Fix **Copy files** on macOS. Sourcebook now writes native `NSURL` file
+  objects directly to the macOS general pasteboard through a fixed,
+  argument-safe AppleScript-ObjC call. This is the same file representation
+  received by compatible upload inputs from Finder.
+- Always use that native macOS path; Electron can report a renderer clipboard
+  write as successful without producing a file payload another app can paste.
+- On Windows, write a native `CF_HDROP` file list through a fixed STA
+  PowerShell command. Selected paths are UTF-16LE/base64 encoded in the child
+  process environment, retaining Chinese and spaces without entering the
+  command text.
+
 ## 0.2.5
 
 - Improve the selected Picker menu item's icon contrast, restore the batch

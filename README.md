@@ -38,6 +38,11 @@ your project note stays ordinary, editable Markdown.
 Existing Vault files keep one authoritative copy; removing an item from a Book
 never deletes its source file.
 
+When a project overlaps with another Book, select the materials, choose **Move
+to another Book** from **More**, then either copy their Book membership or move
+it. Files still point to the same original Vault file; no duplicate file is
+created.
+
 ## Three ways to add material
 
 1. **Use the Add menu.** Choose **Add Vault file** for an existing Vault file,
@@ -87,7 +92,9 @@ retain their original source and available media information.
    explaining how each material should inform the work.
 3. Add selected material to a project note whenever you need it. Files remain
    native links or embeds; text and notes remain editable prose.
-4. Select only the material needed for the next AI task, then copy or hand off
+4. When needed, copy or move a multiple selection to another Book without
+   duplicating the original Vault files.
+5. Select only the material needed for the next AI task, then copy or hand off
    the prepared context.
 
 ## What we are exploring next
@@ -144,9 +151,11 @@ pairing.
   per-item success or error results visible after import. Sourcebook never
   performs background clipboard reads.
 - **Copy files for AI** is an explicit desktop-only action. It writes validated
-  local file URIs to the native system clipboard so selected files can be
-  pasted into an agent; Sourcebook never invokes a shell command. Short text
-  selected for that action is written as a temporary `.txt` file under the
+  local files to the native system clipboard so selected files can be pasted
+  into an agent. On macOS it invokes the built-in `osascript`; on Windows it
+  invokes the built-in PowerShell in STA mode. Both use fixed scripts and pass
+  selected paths only as parameters, never as executable script text. Short
+  text selected for that action is written as a temporary `.txt` file under the
   operating system's temporary directory.
 - Deleting a managed Book or imported asset uses Obsidian's configured trash
   behavior. Removing a material from a Book only unlinks it and preserves its

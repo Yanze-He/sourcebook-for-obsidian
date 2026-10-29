@@ -734,8 +734,27 @@
   transform: none;
 }
 .batch-actions-fab.is-collapsed { height: 42px; min-height: 42px; padding: 0 17px; border-radius: 999px; }
-.batch-actions-entry { width: 42px; padding: 0; justify-content: center; }
-.batch-actions-entry > svg { width: 20px; height: 20px; }
+/* The entry point is a fixed hit target. Keep its mark independent of the
+   neighbouring label button so flex sizing can never collapse the icon. */
+.sourcebook-plugin-root .selection-entry-actions > .batch-actions-entry {
+  display: inline-grid;
+  flex: 0 0 42px;
+  width: 42px;
+  min-width: 42px;
+  max-width: 42px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0;
+  place-items: center;
+}
+.sourcebook-plugin-root .selection-entry-actions > .batch-actions-entry > svg {
+  display: block;
+  flex: 0 0 20px;
+  width: 20px;
+  min-width: 20px;
+  height: 20px;
+  min-height: 20px;
+}
 .selection-entry-actions .batch-actions-fab.is-collapsed { transition: transform 160ms ease, border-color 160ms ease, background-color 160ms ease, box-shadow 160ms ease; }
 .selection-entry-actions .batch-actions-fab.is-collapsed:hover { border-color: #11110f; background: #30302c; box-shadow: 0 10px 22px rgba(17,17,15,.16); color: #fff; transform: translateY(-2px) scale(1.05); }
 .selection-entry-actions .batch-actions-fab.is-collapsed:focus-visible { border-color: #11110f; background: #30302c; color: #fff; outline: 2px solid var(--sb-blue); outline-offset: 2px; }
@@ -1008,6 +1027,24 @@
 .sb-confirm-modal button.sb-delete-action { background: transparent; color: var(--sb-rose); }
 .modal .sb-confirm-modal button.sb-delete-action:hover,
 .sb-confirm-modal button.sb-delete-action:hover { background: var(--sb-rose-soft); }
+.modal .sb-transfer-modal .sb-modal-body,
+.sb-transfer-modal .sb-modal-body { gap: 12px; }
+.modal .sb-transfer-book-list,
+.sb-transfer-book-list { display: grid; gap: 5px; max-height: min(42vh, 300px); overflow: auto; }
+.modal .sb-transfer-book,
+.sb-transfer-book { display: flex; align-items: center; justify-content: space-between; min-height: 38px; width: 100%; padding: 0 11px; text-align: left; }
+.modal .sb-transfer-book:hover:not(:disabled),
+.sb-transfer-book:hover:not(:disabled) { border-color: var(--sb-line-strong); background: var(--sb-surface-2); }
+.modal .sb-transfer-book.is-selected,
+.sb-transfer-book.is-selected { border-color: var(--sb-blue); background: var(--sb-blue-soft); color: var(--sb-blue); }
+.modal .sb-transfer-book-title,
+.sb-transfer-book-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modal .sb-transfer-book-check,
+.sb-transfer-book-check { display: grid; flex: 0 0 auto; place-items: center; color: currentColor; }
+.modal .sb-transfer-book-check svg,
+.sb-transfer-book-check svg { width: 17px; height: 17px; }
+.modal .sb-transfer-empty,
+.sb-transfer-empty { padding: 10px; border: 1px dashed var(--sb-line); border-radius: 7px; background: var(--sb-surface-2); }
 .modal .sb-paste-import-list,
 .sb-paste-import-list { display: grid; gap: 4px; max-height: min(50vh, 430px); margin: 0; padding: 0; overflow: auto; list-style: none; }
 .modal .sb-paste-modal .sb-modal-head,

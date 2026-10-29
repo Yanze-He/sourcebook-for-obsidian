@@ -1,8 +1,24 @@
-# Sourcebook 0.2.5
+# Sourcebook 0.2.11
 
 Sourcebook is a local-first material and note workspace for creative projects.
 It keeps existing Vault files, media, web captures, links, posts, short text,
 and supported AI conversations together in project-based Books.
+
+## Highlights
+
+- Select multiple materials, open **More → Move to another Book**, choose a
+  destination, and explicitly **Copy** or **Move** their Book memberships.
+  The original Vault files remain one shared source; they are never copied.
+- Restores the bottom batch-selection icon to a fixed, readable size beside
+  **Send to AI**.
+
+## File clipboard fixes
+
+- Fixes **Copy files** on macOS. Selected files now become native `NSURL` file
+  objects on the system clipboard, so compatible AI upload inputs receive real
+  attachments instead of a non-pasteable file reference.
+- On Windows, selected files now use the native `CF_HDROP` clipboard format,
+  including paths with Chinese characters or spaces.
 
 ## Highlights
 

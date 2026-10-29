@@ -1,4 +1,5 @@
 /** Native file-list clipboard, opt-in only. */
+import { execFile, spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +9,32 @@ type ElectronFileClipboard = {
     clipboard: { write(items: unknown[]): Promise<void> | void };
     ClipboardItem: new (items: Record<'text/uri-list', string>) => unknown;
 };
+
+const MACOS_COPY_FILES_SCRIPT = `use framework "Foundation"
+use framework "AppKit"
+use scripting additions
+
+on run argv
+    set sourcebookFiles to current application's NSMutableArray's array()
+    repeat with sourcebookPath in argv
+        set sourcebookURL to current application's |NSURL|'s fileURLWithPath:(contents of sourcebookPath)
+        (sourcebookFiles's addObject:sourcebookURL)
+    end repeat
+    set sourcebookPasteboard to current application's NSPasteboard's generalPasteboard()
+    sourcebookPasteboard's clearContents()
+    sourcebookPasteboard's writeObjects:sourcebookFiles
+end run`;
+
+const WINDOWS_FILE_PATHS_ENV_KEY = 'SOURCEBOOK_FILE_PATHS_B64';
+const WINDOWS_COPY_FILES_SCRIPT = [
+    `$sourcebookJson = [System.Text.Encoding]::Unicode.GetString([Convert]::FromBase64String($env:${WINDOWS_FILE_PATHS_ENV_KEY}))`,
+    '$sourcebookPaths = @($sourcebookJson | ConvertFrom-Json)',
+    'if ($sourcebookPaths.Count -eq 0) { throw "No files were selected" }',
+    'Add-Type -AssemblyName System.Windows.Forms',
+    '$sourcebookFiles = New-Object System.Collections.Specialized.StringCollection',
+    'foreach ($sourcebookPath in $sourcebookPaths) { if (-not (Test-Path -LiteralPath $sourcebookPath -PathType Leaf)) { throw "File is no longer available" }; [void]$sourcebookFiles.Add([string]$sourcebookPath) }',
+    '[System.Windows.Forms.Clipboard]::SetFileDropList($sourcebookFiles)',
+].join('; ');
 
 /** The browser harness has a virtual Vault, so it supplies a test-only file clipboard bridge. */
 function browserFileClipboardBridge(): BrowserFileClipboardBridge | undefined {
@@ -22,9 +49,14 @@ function browserFileClipboardBridge(): BrowserFileClipboardBridge | undefined {
  * copy action, never for clipboard content received from a page.
  */
 function electronFileClipboard(): ElectronFileClipboard | undefined {
-    if (typeof window === 'undefined') return undefined;
     try {
-        const candidate = (window as Window & { require?: (module: string) => unknown }).require?.('electron') as Partial<ElectronFileClipboard> | undefined;
+        // Obsidian plugins run in Electron's CommonJS plugin context. `require`
+        // belongs to that context; it is not exposed as `window.require` in
+        // recent macOS builds. Looking on `window` silently selected the web
+        // clipboard fallback, which macOS correctly rejects for file payloads.
+        // The local bundler forwards non-Sourcebook modules to this native
+        // require, so this remains scoped to Electron's own clipboard API.
+        const candidate = require('electron') as Partial<ElectronFileClipboard> | undefined;
         return candidate
             && candidate.clipboard
             && typeof candidate.clipboard.write === 'function'
@@ -34,8 +66,57 @@ function electronFileClipboard(): ElectronFileClipboard | undefined {
     } catch { return undefined; }
 }
 
+function macOSFileClipboard(): boolean {
+    return typeof process !== 'undefined' && process.platform === 'darwin';
+}
+
+function windowsFileClipboard(): boolean {
+    return typeof process !== 'undefined' && process.platform === 'win32';
+}
+
+/**
+ * Electron 43+ limits the privileged file clipboard in plugin renderers.
+ * This explicit macOS-only fallback uses AppleScript-ObjC to place NSURL file
+ * objects on the general pasteboard—the same representation native upload
+ * inputs receive from Finder. The script is fixed; paths are passed only as
+ * separate argv values and are never interpolated into executable source.
+ */
+export function macFileClipboardInvocation(paths: string[]): { command: string; args: string[] } {
+    return { command: '/usr/bin/osascript', args: ['-e', MACOS_COPY_FILES_SCRIPT, ...paths] };
+}
+
+async function copyFilesOnMac(paths: string[]): Promise<void> {
+    const invocation = macFileClipboardInvocation(paths);
+    await new Promise<void>((resolve, reject) => {
+        execFile(invocation.command, invocation.args, { windowsHide: true, maxBuffer: 1024 * 1024 }, error => error ? reject(error) : resolve());
+    });
+}
+
+/** Windows needs an STA process to set a native CF_HDROP file list. */
+export function windowsFileClipboardInvocation(paths: string[]): { command: string; args: string[]; encodedPaths: string } {
+    return {
+        command: 'powershell.exe',
+        args: ['-NoProfile', '-NonInteractive', '-Sta', '-Command', WINDOWS_COPY_FILES_SCRIPT],
+        encodedPaths: Buffer.from(JSON.stringify(paths), 'utf16le').toString('base64')
+    };
+}
+
+async function copyFilesOnWindows(paths: string[]): Promise<void> {
+    const invocation = windowsFileClipboardInvocation(paths);
+    await new Promise<void>((resolve, reject) => {
+        const child = spawn(invocation.command, invocation.args, {
+            env: { ...process.env, [WINDOWS_FILE_PATHS_ENV_KEY]: invocation.encodedPaths },
+            windowsHide: true
+        });
+        let stderr = '';
+        child.stderr?.on('data', (chunk: { toString(): string }) => { stderr += chunk.toString(); });
+        child.on('error', reject);
+        child.on('close', code => code === 0 ? resolve() : reject(new Error(stderr.trim() || `PowerShell exited with code ${code}`)));
+    });
+}
+
 export function fileClipboardPlatform(): boolean {
-    return Boolean(browserFileClipboardBridge()) || Boolean(electronFileClipboard()) || Boolean(
+    return Boolean(browserFileClipboardBridge()) || Boolean(electronFileClipboard()) || macOSFileClipboard() || windowsFileClipboard() || Boolean(
         typeof navigator !== 'undefined' && navigator.clipboard && typeof ClipboardItem !== 'undefined'
     );
 }
@@ -67,15 +148,25 @@ export async function copyFiles(paths: string[]): Promise<void> {
     const bridge = browserFileClipboardBridge();
     if (bridge) { await bridge(paths, []); return; }
     validatePaths(paths);
+    // Electron 43 may resolve renderer clipboard writes without handing a
+    // pasteable file payload to another application. macOS therefore always
+    // uses Finder's native file-copy path rather than treating that response
+    // as success and skipping the reliable system fallback.
+    if (macOSFileClipboard()) {
+        try { await copyFilesOnMac(paths); return; }
+        catch { throw new Error('macOS file clipboard access was denied'); }
+    }
+    if (windowsFileClipboard()) {
+        try { await copyFilesOnWindows(paths); return; }
+        catch { throw new Error('Windows file clipboard access was denied'); }
+    }
     const nativeClipboard = electronFileClipboard();
     if (nativeClipboard) {
         try {
             const uris = paths.map(fileUri).join('\r\n');
             await nativeClipboard.clipboard.write([new nativeClipboard.ClipboardItem({ 'text/uri-list': uris })]);
             return;
-        } catch {
-            throw new Error('Native file clipboard access was denied');
-        }
+        } catch { /* Use the supported macOS fallback below when needed. */ }
     }
     if (!fileClipboardPlatform()) throw new Error('File clipboard requires a current Obsidian desktop version');
     try {

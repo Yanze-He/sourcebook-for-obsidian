@@ -289,6 +289,50 @@ export class SourcebookStore {
         return this.queue.run(async () => { await this.mutateBook(book, entries => entries.filter(entry => !entryIds.includes(entry.id))); });
     }
 
+    /**
+     * Copies Book membership rather than copying the underlying Vault files.
+     * A move writes the destination first, so a failed destination write never
+     * removes a source entry. File entries get a fresh, destination-relative
+     * Obsidian link; text, links, notes, and Picker metadata remain intact.
+     */
+    async transferEntries(source: Book, destination: Book, entryIds: string[], mode: 'copy' | 'move'): Promise<{ added: number; existing: number; moved: number }> {
+        return this.queue.run(async () => {
+            if (source.id === destination.id) throw new Error('Choose a different Book');
+            const selectedIds = new Set(entryIds);
+            if (!selectedIds.size) return { added: 0, existing: 0, moved: 0 };
+            const { book: currentSource } = await this.currentBook(source);
+            const { book: currentDestination } = await this.currentBook(destination);
+            const selected = currentSource.entries.filter(entry => selectedIds.has(entry.id));
+            if (!selected.length) throw new Error('Selected materials are no longer in this Book; reload and try again');
+
+            let added = 0;
+            let existing = 0;
+            await this.mutateBook(currentDestination, entries => {
+                const next = [...entries];
+                for (const entry of selected) {
+                    if (entry.type === 'file') {
+                        const path = this.io.resolveAttachment(entry.target || '', currentSource.path);
+                        if (!path) throw new Error('A selected file can no longer be resolved; reload and try again');
+                        const duplicate = next.find(candidate => candidate.type === 'file' && this.io.resolveAttachment(candidate.target || '', currentDestination.path) === path);
+                        if (duplicate) { existing++; continue; }
+                        const file = this.io.getFile(path);
+                        if (!file) throw new Error('A selected file no longer exists; reload and try again');
+                        next.push({ ...entry, id: entryId(), removed: false, target: this.io.link(path, currentDestination.path, ['image', 'audio', 'video'].includes(kindFor(file.name))), picker: entry.picker ? { ...entry.picker } : undefined });
+                        added++;
+                        continue;
+                    }
+                    if (entry.type === 'link' && next.some(candidate => candidate.type === 'link' && candidate.url === entry.url)) { existing++; continue; }
+                    next.push({ ...entry, id: entryId(), removed: false, picker: entry.picker ? { ...entry.picker } : undefined });
+                    added++;
+                }
+                return next;
+            });
+
+            if (mode === 'move') await this.mutateBook(currentSource, entries => entries.filter(entry => !selectedIds.has(entry.id)));
+            return { added, existing, moved: mode === 'move' ? selected.length : 0 };
+        });
+    }
+
     async restore(book: Book, entryIdValue: string): Promise<void> {
         return this.queue.run(async () => { await this.mutateBook(book, entries => entries.map(entry => entry.id === entryIdValue ? { ...entry, removed: false } : entry)); });
     }

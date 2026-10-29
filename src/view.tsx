@@ -5,7 +5,7 @@ import {
     message, searchText, Kind
 } from './core';
 import { planPack, promptFor, attachmentPaths, handoffFileCount, handoffTextFileName, PackPlan } from './pack';
-import { FormModal, FilePicker, ConfirmModal, PasteImportItem, PasteImportModal, PickerPairingModal, label } from './ui';
+import { BookTransferModal, FormModal, FilePicker, ConfirmModal, PasteImportItem, PasteImportModal, PickerPairingModal, label } from './ui';
 import { copyFiles, copyFilesWithText, copyText, fileClipboardPlatform } from './clipboard';
 import { Fragment, h, render } from './jsx';
 import { Icon, IconName, SourcebookMark } from './icons';
@@ -544,7 +544,7 @@ export class SourcebookView extends ItemView {
         const summary = this.renderSelectionSummary(visible);
         if (this.selectionIntent === 'handoff') return <div className="batch-actions-fab handoff-selection-bar is-expanded">{summary}<button className="is-primary batch-send-ai" disabled={!this.selected.size} onClick={() => this.openHandoffFromSources()} type="button"><Icon name="arrow-left-right" size={16}/>{this.t('继续', 'Continue')}</button><button aria-label={this.t('取消发送素材', 'Cancel sending sources')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
         if (!this.selected.size) return <div className="batch-actions-fab">{summary}<button aria-label={this.t('关闭批量操作', 'Close batch actions')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
-        return <div className="batch-actions-fab is-expanded">{summary}<div className="batch-more-wrap"><button aria-expanded={this.batchMoreOpen} aria-haspopup="menu" className="batch-more-trigger" onClick={() => { this.batchMoreOpen = !this.batchMoreOpen; this.updateBatchActions(); }} type="button"><Icon name="more" size={16}/>{this.t('更多', 'More')}</button>{this.batchMoreOpen ? <><div aria-hidden="true" className="popover-dismiss-layer batch-popover-dismiss" onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); }}/><div className="batch-more-popover" role="menu"><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.remove(); }} role="menuitem" type="button"><Icon name="arrow-left-right" size={16}/>{this.t('移出', 'Remove')}</button><button className="is-danger" onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.confirmDeleteSelected(); }} role="menuitem" type="button"><Icon name="trash" size={16}/>{this.t('删除', 'Delete')}</button><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.batchNote(); }} role="menuitem" type="button"><Icon name="message" size={16}/>{this.t('添加备注', 'Add context')}</button><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.addToExistingNote(); }} role="menuitem" type="button"><Icon name="file-plus" size={16}/>{this.t('添加到笔记', 'Add to note')}</button></div></> : null}</div><button className="batch-project-note" onClick={() => this.createProjectNote()} type="button"><Icon name="file-plus" size={16}/>{this.t('转成笔记', 'Turn into note')}</button><button className="is-primary batch-send-ai" onClick={() => this.openHandoffFromSources()} type="button"><Icon name="send" size={16}/>{this.t('发送给 AI', 'Send to AI')}</button><button aria-label={this.t('关闭批量操作', 'Close batch actions')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
+        return <div className="batch-actions-fab is-expanded">{summary}<div className="batch-more-wrap"><button aria-expanded={this.batchMoreOpen} aria-haspopup="menu" className="batch-more-trigger" onClick={() => { this.batchMoreOpen = !this.batchMoreOpen; this.updateBatchActions(); }} type="button"><Icon name="more" size={16}/>{this.t('更多', 'More')}</button>{this.batchMoreOpen ? <><div aria-hidden="true" className="popover-dismiss-layer batch-popover-dismiss" onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); }}/><div className="batch-more-popover" role="menu"><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.transferToOtherBook(); }} role="menuitem" type="button"><Icon name="arrow-left-right" size={16}/>{this.t('移动到其他 Book', 'Move to another Book')}</button><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.remove(); }} role="menuitem" type="button"><Icon name="arrow-left-right" size={16}/>{this.t('移出', 'Remove')}</button><button className="is-danger" onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.confirmDeleteSelected(); }} role="menuitem" type="button"><Icon name="trash" size={16}/>{this.t('删除', 'Delete')}</button><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.batchNote(); }} role="menuitem" type="button"><Icon name="message" size={16}/>{this.t('添加备注', 'Add context')}</button><button onClick={() => { this.batchMoreOpen = false; this.updateBatchActions(); this.addToExistingNote(); }} role="menuitem" type="button"><Icon name="file-plus" size={16}/>{this.t('添加到笔记', 'Add to note')}</button></div></> : null}</div><button className="batch-project-note" onClick={() => this.createProjectNote()} type="button"><Icon name="file-plus" size={16}/>{this.t('转成笔记', 'Turn into note')}</button><button className="is-primary batch-send-ai" onClick={() => this.openHandoffFromSources()} type="button"><Icon name="send" size={16}/>{this.t('发送给 AI', 'Send to AI')}</button><button aria-label={this.t('关闭批量操作', 'Close batch actions')} className="batch-close" onClick={() => this.clearSelectionMode()} type="button"><Icon name="x" size={17}/></button></div>;
     }
 
     private renderDetail(item: Resolved): JSX.Element {
@@ -841,6 +841,29 @@ export class SourcebookView extends ItemView {
         if (!book || !items.length) return;
         new FormModal(this.app, this.t('添加本册备注', 'Add context'), [{ key: 'note', label: this.t('备注', 'Context'), multiline: true, placeholder: this.t('会写入所有已选素材。', 'Applied to all selected sources.') }], this.t('保存', 'Save'), async values => {
             for (const item of items) await this.plugin.store.updateNote(book, item.entry.id, values.note || '', item.entry.note);
+            await this.reload();
+        }).open();
+    }
+
+    private transferToOtherBook(): void {
+        const source = this.book;
+        const entryIds = [...this.selected];
+        if (!source || !entryIds.length) return;
+        const destinations = this.library.books.filter(book => !book.archived && book.id !== source.id);
+        new BookTransferModal(this.app, this.plugin.settings.language, destinations, entryIds.length, async (destination, mode) => {
+            const result = await this.plugin.store.transferEntries(source, destination, entryIds, mode);
+            if (mode === 'move') {
+                this.selected.clear();
+                this.selectionMode = false;
+            }
+            const destinationName = destination.title;
+            if (mode === 'copy') {
+                this.notify(result.added
+                    ? this.t(`已复制 ${result.added} 项到「${destinationName}」`, `Copied ${result.added} ${result.added === 1 ? 'item' : 'items'} to “${destinationName}”`)
+                    : this.t(`所选素材已在「${destinationName}」中`, `The selected materials are already in “${destinationName}”`));
+            } else {
+                this.notify(this.t(`已移动 ${result.moved} 项到「${destinationName}」`, `Moved ${result.moved} ${result.moved === 1 ? 'item' : 'items'} to “${destinationName}”`));
+            }
             await this.reload();
         }).open();
     }

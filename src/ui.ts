@@ -1,5 +1,5 @@
 import { App, Modal, FuzzySuggestModal, TFile, Notice, setIcon } from 'obsidian';
-import { message } from './core';
+import { Book, message } from './core';
 export type Language = 'zh' | 'en';
 export const label = (lang: Language, zh: string, en: string): string => lang === 'zh' ? zh : en;
 export function el<K extends keyof HTMLElementTagNameMap>(parent: HTMLElement, tag: K, text = '', cls = ''): HTMLElementTagNameMap[K] {
@@ -88,6 +88,84 @@ export class ConfirmModal extends Modal {
         action(footer, this.confirmLabel, async () => { await this.confirm(); this.close(); }, this.alternate ? '' : 'mod-warning sb-delete-action');
         if (this.alternate) action(footer, this.alternate.label, async () => { await this.alternate?.confirm(); this.close(); }, this.alternate.danger ? 'mod-warning sb-delete-action' : '');
     }
+    onClose(): void { this.contentEl.replaceChildren(); }
+}
+
+/** Select another Book using the same simple Book list as the workspace header,
+ * then choose whether the current membership should be copied or moved. */
+export class BookTransferModal extends Modal {
+    private targetId = '';
+    private busy = false;
+    constructor(
+        app: App,
+        private language: Language,
+        private books: Book[],
+        private itemCount: number,
+        private submit: (target: Book, mode: 'copy' | 'move') => Promise<void>
+    ) { super(app); }
+
+    onOpen(): void {
+        this.modalEl?.classList.add('sb-modal-shell');
+        this.contentEl.classList.add('sb-modal', 'sb-transfer-modal');
+        this.renderContents();
+    }
+
+    private renderContents(): void {
+        this.contentEl.replaceChildren();
+        const header = el(this.contentEl, 'header', '', 'sb-modal-head');
+        el(header, 'h2', label(this.language, '移动到其他 Book', 'Move to another Book'));
+        const body = el(this.contentEl, 'div', '', 'sb-modal-body');
+        el(body, 'p', label(this.language, `已选 ${this.itemCount} 项素材。选择目标 Book 后，可决定复制或移动。`, `${this.itemCount} selected ${this.itemCount === 1 ? 'material' : 'materials'}. Choose a destination Book, then copy or move.`));
+        if (!this.books.length) {
+            el(body, 'p', label(this.language, '还没有其他可用的 Book。请先在顶部创建一个 Book。', 'There are no other available Books yet. Create one from the header first.'), 'sb-transfer-empty');
+        } else {
+            const list = el(body, 'div', '', 'sb-transfer-book-list');
+            for (const book of this.books) {
+                const selected = this.targetId === book.id;
+                const button = el(list, 'button', '', `sb-transfer-book${selected ? ' is-selected' : ''}`);
+                button.type = 'button';
+                button.disabled = this.busy;
+                button.setAttribute('aria-pressed', String(selected));
+                const title = el(button, 'span', book.title);
+                title.classList.add('sb-transfer-book-title');
+                if (selected) {
+                    const mark = el(button, 'span', '', 'sb-transfer-book-check');
+                    setIcon(mark, 'check');
+                }
+                button.addEventListener('click', () => { this.targetId = book.id; this.renderContents(); });
+            }
+        }
+        const footer = el(this.contentEl, 'footer', '', 'sb-modal-footer');
+        const cancel = el(footer, 'button', label(this.language, '取消', 'Cancel'));
+        cancel.type = 'button';
+        cancel.disabled = this.busy;
+        cancel.addEventListener('click', () => this.close());
+        const target = this.books.find(book => book.id === this.targetId);
+        const copy = el(footer, 'button', label(this.language, `复制 ${this.itemCount} 项`, `Copy ${this.itemCount} ${this.itemCount === 1 ? 'item' : 'items'}`));
+        copy.type = 'button';
+        copy.disabled = this.busy || !target;
+        copy.addEventListener('click', () => { void this.run('copy'); });
+        const move = el(footer, 'button', label(this.language, `移动 ${this.itemCount} 项`, `Move ${this.itemCount} ${this.itemCount === 1 ? 'item' : 'items'}`), 'mod-cta');
+        move.type = 'button';
+        move.disabled = this.busy || !target;
+        move.addEventListener('click', () => { void this.run('move'); });
+    }
+
+    private async run(mode: 'copy' | 'move'): Promise<void> {
+        const target = this.books.find(book => book.id === this.targetId);
+        if (!target || this.busy) return;
+        this.busy = true;
+        this.renderContents();
+        try {
+            await this.submit(target, mode);
+            this.close();
+        } catch (error) {
+            this.busy = false;
+            this.renderContents();
+            new Notice(message(error));
+        }
+    }
+
     onClose(): void { this.contentEl.replaceChildren(); }
 }
 
